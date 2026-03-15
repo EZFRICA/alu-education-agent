@@ -1,0 +1,41 @@
+# Exclude Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Exclude Env vars
+.env
+.env.*
+!.env.example
+
+# Exclude Virtual Env
+.venv/
+venv/
+env/
+.python-version
+
+# Exclude IDE settings
+.vscode/
+.idea/
+.DS_Store
+
+# Exclude Data persistence
+data/
+weaviate_data/
+letta_data/
+chroma/
+
+# Exclude AI agent internal state
+.agent/
+.agents/
+
+# Exclude Chainlit/Streamlit temporary files
+.chainlit/
+.files/
+.streamlit/
+
+# Exclude temporary tests/scripts
+stop.sh
+uv.lock
+presentation/
+DEVPOST_SUBMISSION.md
