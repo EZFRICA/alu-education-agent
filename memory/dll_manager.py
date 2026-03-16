@@ -301,7 +301,9 @@ def get_all_nodes(dll: dict) -> list[dict]:
     """Return all nodes in HEAD → TAIL order for UI display."""
     nodes = []
     current = dll["head_id"]
-    while current:
+    visited = set()
+    while current and current not in visited:
+        visited.add(current)
         nodes.append(dll["nodes"][current])
         current = dll["nodes"][current]["next"]
     return nodes
@@ -310,7 +312,9 @@ def get_all_nodes(dll: dict) -> list[dict]:
 def _head_to_tail_order(dll: dict) -> list[str]:
     """Traverse the DLL from HEAD to TAIL via .next links."""
     order, current = [], dll["head_id"]
-    while current:
+    visited = set()
+    while current and current not in visited:
+        visited.add(current)
         order.append(current)
         current = dll["nodes"][current]["next"]
     return order
@@ -319,7 +323,9 @@ def _head_to_tail_order(dll: dict) -> list[str]:
 def _tail_to_head_order(dll: dict) -> list[str]:
     """Traverse the DLL from TAIL to HEAD via .prev links."""
     order, current = [], dll["tail_id"]
-    while current:
+    visited = set()
+    while current and current not in visited:
+        visited.add(current)
         order.append(current)
         current = dll["nodes"][current]["prev"]
     return order

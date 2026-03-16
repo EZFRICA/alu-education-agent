@@ -209,32 +209,28 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
                         "search_enabled": search_on
                     }
                     
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        result = loop.run_until_complete(agent_app.ainvoke(inputs))
+                    import asyncio
+                    result = asyncio.run(agent_app.ainvoke(inputs))
+                    
+                    new_messages = result.get("messages", [])
+                    resp_text = new_messages[-1].content
+                    
+                    match = re.search(r"Memory: (.*?) \|", resp_text)
+                    if match:
+                        injected_str = match.group(1)
+                        st.session_state.last_injected_ids = [s.strip() for s in injected_str.split("+") if s.strip() and s.strip() != "none"]
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": resp_text})
+                    st.session_state.langchain_history = new_messages
+                    
+                    # Set proposal if any
+                    if result.get("needs_new_block") == "True":
+                        st.session_state.pending_proposal = result.get("proposed_block_config")
                         
-                        new_messages = result.get("messages", [])
-                        resp_text = new_messages[-1].content
-                        
-                        match = re.search(r"Memory: (.*?) \|", resp_text)
-                        if match:
-                            injected_str = match.group(1)
-                            st.session_state.last_injected_ids = [s.strip() for s in injected_str.split("+") if s.strip() and s.strip() != "none"]
-                        
-                        st.session_state.messages.append({"role": "assistant", "content": resp_text})
-                        st.session_state.langchain_history = new_messages
-                        
-                        # Set proposal if any
-                        if result.get("needs_new_block") == "True":
-                            st.session_state.pending_proposal = result.get("proposed_block_config")
-                            
-                        # Final sync of memory facts
-                        dll_state = load_dll()  # Reload to get MTF changes
-                        for b_id in dll_state["nodes"]:
-                             content = get_core_block_content(agent_id, b_id)
-                             st.session_state.memory_facts[b_id] = content
-                        
-                        st.rerun()
-                    finally:
-                        loop.close()
+                    # Final sync of memory facts
+                    dll_state = load_dll()  # Reload to get MTF changes
+                    for b_id in dll_state["nodes"]:
+                         content = get_core_block_content(agent_id, b_id)
+                         st.session_state.memory_facts[b_id] = content
+                    
+                    st.rerun()

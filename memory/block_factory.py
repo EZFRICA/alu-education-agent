@@ -128,6 +128,9 @@ def create_dynamic_block(
             f"Dynamic block limit reached ({dll['dynamic_block_max']} blocks maximum)."
         )
 
+    if block_id in dll["nodes"]:
+        raise ValueError(f"Block '{block_id}' already exists.")
+
     new_node = {
         "id": block_id,
         "label": label,
