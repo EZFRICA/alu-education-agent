@@ -13,7 +13,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from memory.dll_manager import search_memory, load_dll, save_dll, move_to_front, get_all_nodes
 from memory.context_compiler import compile_working_context, get_core_block_content
 from memory.block_detector import detect_new_block_opportunity
+from memory.block_factory import create_dynamic_block, update_block_content, delete_block_stitching
 from memory.letta_cloud_client import append_block, update_block
+from memory import weaviate_cloud_client as wcd_client
+from memory import letta_cloud_client as letta_client
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -49,6 +52,7 @@ async def _extract_and_update_memory(
     user_query: str,
     agent_response: str,
     relevant_blocks: list[dict],
+    dll: dict,
 ) -> None:
     """
     Memory write-back step — runs after each agent response.
@@ -69,7 +73,12 @@ async def _extract_and_update_memory(
             f'- {block["id"]} ({block["type"]}): "{current.strip() or "[empty]"}"'
         )
 
-    extraction_prompt = f"""You are a memory extraction system for a travel planning agent.
+    # Dynamic instructions based on current DLL blocks
+    block_definitions = []
+    for b_id, node in dll["nodes"].items():
+        block_definitions.append(f"- {b_id}: {node['label']} (Keywords: {', '.join(node.get('keywords', []))})")
+
+    extraction_prompt = f"""You are a memory extraction system for a travel planning assistant.
 
 The user just said:
 "{user_query}"
@@ -77,28 +86,23 @@ The user just said:
 The agent responded:
 "{agent_response[:600]}"
 
-Current memory blocks (id: current content):
+Current memory blocks state (ID: content snippet):
 {chr(10).join(block_summaries)}
 
-Available blocks to update:
-- traveler_profile: Identity, passport, nationality, emergency contacts
-- traveler_preferences: Accommodation style, transport mode, budget rules, dietary restrictions
-- active_trip: Destination, dates, booked flights/hotels, itinerary steps
-- current_session: Active searches, temporary notes, options under consideration
+AVAILABLE BLOCKS TO UPDATE:
+{chr(10).join(block_definitions)}
 
-TASK: Extract ONLY new factual information the user explicitly stated.
+TASK: Extract ONLY new factual information the user explicitly stated or confirmed.
 Rules:
 - Do NOT infer, guess, or include agent suggestions.
 - Do NOT repeat information already present in the blocks.
-- New info should be appended (short sentences, bullet points, or key-value pairs).
+- New info should be appended (short sentences or bullet points).
 - If nothing new was shared, return an empty string for that block.
 
-Return ONLY a valid JSON object, no explanation, no markdown:
+Return ONLY a valid JSON object, keys must match the block IDs above:
 {{
-  "traveler_profile": "",
-  "traveler_preferences": "",
-  "active_trip": "",
-  "current_session": ""
+  "block_id_1": "new info here",
+  "block_id_2": ""
 }}
 """
 
@@ -137,8 +141,19 @@ Return ONLY a valid JSON object, no explanation, no markdown:
                 if current
                 else new_info.strip()
             )
-            update_block(agent_id, block_id, merged)
-            logger.info("Memory write-back: '%s' ← '%s'", block_id, new_info[:100])
+            
+            # Transactional Update (Sync Letta + Weaviate)
+            node = dll["nodes"].get(block_id)
+            if node:
+                update_block_content(
+                    block_id, 
+                    merged, 
+                    node.get("keywords", []), 
+                    dll, 
+                    letta_client, 
+                    wcd_client
+                )
+                logger.info("Memory write-back (ACID): '%s' updated.", block_id)
 
     except Exception as e:
         logger.warning("Memory extraction failed (non-critical): %s", e)
@@ -215,8 +230,8 @@ INSTRUCTIONS:
     text_content = text_content.rstrip() + footer
     logger.debug("Planner response generated (%d chars).", len(text_content))
 
-    # 5. Memory write-back
-    await _extract_and_update_memory(agent_id, user_query, text_content, relevant_blocks)
+    # 5. Memory write-back (Extract and update relevant memory blocks)
+    await _extract_and_update_memory(agent_id, user_query, text_content, relevant_blocks, dll)
 
     # 6. Block detector
     raw_history = [{"role": msg.type, "content": str(msg.content)} for msg in messages]
