@@ -11,9 +11,21 @@ import os
 from datetime import datetime
 from typing import Optional
 from config import METADATA_FILE, USER_ID, MAX_DYNAMIC_BLOCKS, FIXED_BLOCKS
+import asyncio
+from typing import Optional, Dict
 from logger import get_logger
 
 logger = get_logger(__name__)
+
+# ── Dynamic Isolation Locks ──────────────────────────────────────────────────
+# Ensures only one coroutine can modify a specific agent's DLL at a time.
+_dll_locks: Dict[str, asyncio.Lock] = {}
+
+def get_dll_lock(agent_id: str) -> asyncio.Lock:
+    """Get or create an asyncio.Lock for a specific agent."""
+    if agent_id not in _dll_locks:
+        _dll_locks[agent_id] = asyncio.Lock()
+    return _dll_locks[agent_id]
 
 # ── Adaptive certainty thresholds by block type ───────────────────────────────
 # Certainty: 0.0 (opposite) to 1.0 (identical) — maps to old similarity scores
@@ -115,7 +127,7 @@ async def init_dll() -> dict:
 
     # Ingest keyword vectors into Weaviate BlockIndex
     try:
-        from memory.weaviate_cloud_client import get_weaviate_client_async, upsert_block_index
+        from apu.storage.weaviate_driver import get_weaviate_client_async, upsert_block_index
         async with get_weaviate_client_async() as client:
             # Note: setup_collections is still sync as it's a one-time schema init
             for node_id, node in dll["nodes"].items():
@@ -182,7 +194,7 @@ async def search_memory(query: str, dll: dict, strict_manual: bool = False) -> l
 
     # STEP 1: Query Weaviate for all block scores
     try:
-        from memory.weaviate_cloud_client import get_weaviate_client_async, search_block_index
+        from apu.storage.weaviate_driver import get_weaviate_client_async, search_block_index
         async with get_weaviate_client_async() as client:
             agent_id = dll.get("agent_id")
             if not agent_id:
@@ -241,13 +253,40 @@ async def search_memory(query: str, dll: dict, strict_manual: bool = False) -> l
     top_blocks = [item[1] for item in forced_blocks]
     
     if not strict_manual:
-        for certainty, node in dynamic_candidates:
-            # Fill context up to the hard maximum (12 total blocks)
+        for certainty, res in [(certainty_map[r["block_id"]], r) for r in weaviate_results]:
+            b_id = res["block_id"]
+            
+            # ── SEMANTIC PAGE FAULT CHECK ─────────────────────────────────────
+            # If the most relevant block is NOT in our active DLL, it's a Page Fault.
+            # The MMU must 'Page In' the block from disk (Weaviate/Letta).
+            if b_id not in dll["nodes"]:
+                if certainty >= threshold:
+                    logger.info("Semantic MMU: PAGE FAULT for '%s'. Re-paging into active DLL.", b_id)
+                    from apu.mmu.block_factory import insert_node_by_type
+                    new_node = {
+                        "id": b_id,
+                        "label": b_id.replace("_", " ").title(),
+                        "type": res["block_type"],
+                        "last_accessed": datetime.now().isoformat(),
+                        "active": True
+                    }
+                    insert_node_by_type(res["block_type"], new_node, dll)
+                    dll["dynamic_block_count"] += 1
+                    top_blocks.append(new_node)
+                    continue
+
+            # Standard selection for existing blocks
             if len(top_blocks) < 12 and certainty >= threshold:
-                top_blocks.append(node)
+                node = dll["nodes"][b_id]
+                if node not in top_blocks:
+                    top_blocks.append(node)
 
     for idx, b in enumerate(top_blocks):
         logger.debug("[%d] Selected: '%s' (type=%s)", idx + 1, b["label"], b["type"])
+        # Update metrics for the Semantic MMU (LRU Paging)
+        node = dll["nodes"][b["id"]]
+        node["access_count"] = node.get("access_count", 0) + 1
+        node["last_accessed"] = datetime.now().isoformat()
 
     return top_blocks
 
@@ -299,7 +338,7 @@ async def update_node_keywords(block_id: str, keywords: list[str], dll: dict) ->
 
     # Re-index in Weaviate
     try:
-        from memory.weaviate_cloud_client import get_weaviate_client_async, upsert_block_index
+        from apu.storage.weaviate_driver import get_weaviate_client_async, upsert_block_index
         async with get_weaviate_client_async() as client:
             agent_id = dll.get("agent_id")
             if not agent_id:

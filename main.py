@@ -18,13 +18,13 @@ def main():
         print("\n[Launching Dashboard...] (Press Ctrl+C to stop)")
         subprocess.run(["uv", "run", "streamlit", "run", "dashboard/app.py"])
     elif choice == "2":
-        subprocess.run([sys.executable, "agent/travel_agent.py"])
+        subprocess.run([sys.executable, "agent_os/cli_driver.py"])
     elif choice == "3":
-        subprocess.run([sys.executable, "memory/schema.py"])
+        subprocess.run([sys.executable, "apu/storage/schema.py"])
     elif choice == "4":
-        subprocess.run([sys.executable, "memory/letta_cloud_client.py", "--create-agent"])
+        subprocess.run([sys.executable, "apu/storage/letta_driver.py", "--create-agent"])
     elif choice == "5":
-        subprocess.run([sys.executable, "memory/sync_memory.py"])
+        subprocess.run([sys.executable, "apu/storage/sync_util.py"])
     else:
         print("Invalid choice. Exiting.")
 

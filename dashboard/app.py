@@ -9,15 +9,39 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from agent.agent_graph_dll import create_dll_agent_graph
-from memory.dll_manager import load_dll, save_dll, get_all_nodes, toggle_block, update_node_keywords
-from memory.block_factory import create_dynamic_block, update_block_content, delete_block_stitching
-from memory.letta_cloud_client import update_block, delete_block, get_letta_client_async
-from memory import letta_cloud_client as letta_client
-from memory import weaviate_cloud_client as wcd_client
-from memory.context_compiler import get_core_block_content
+from agent_os.graph import create_dll_agent_graph
+from apu.core.scheduler import scheduler
+from apu.mmu.controller import load_dll, save_dll, get_all_nodes, toggle_block, update_node_keywords
+from apu.mmu.block_factory import create_dynamic_block, update_block_content, delete_block_stitching
+from apu.storage.letta_driver import update_block, delete_block, get_letta_client_async
+from apu.storage import letta_driver as letta_client
+from apu.storage import weaviate_driver as wcd_client
+from apu.core.pipeline import get_core_block_content
+from apu.mmu import cache_l1 as block_cache
 
-st.set_page_config(page_title="Travel Agent — Agent OS/DLL Dashboard", page_icon="🧠", layout="wide")
+st.set_page_config(
+    page_title="Agent OS — Agent Processor Unit",
+    page_icon="🧠",
+    layout="wide"
+)
+
+# --- APU Scheduler Background Startup ---
+@st.cache_resource
+def start_apu_scheduler():
+    import threading
+    def run_async_scheduler():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        # In a real OS, this would be a kernel-level service
+        loop.run_until_complete(scheduler.start())
+        loop.run_forever()
+    
+    thread = threading.Thread(target=run_async_scheduler, daemon=True)
+    thread.start()
+    return thread
+
+# Ensure the control unit is powered on
+start_apu_scheduler()
 
 # --- Initialize Session State ---
 if "messages" not in st.session_state:
@@ -45,7 +69,7 @@ if not agent_id:
 
 # --- SIDEBAR : NAVIGATION & OPTIONS ---
 with st.sidebar:
-    st.title("🧠 Agent OS/UX-Memory")
+    st.title("🧠 Agent OS/ APU")
     st.info(f"Active DLL : {len(get_all_nodes(dll_state))}/12 blocks")
     st.divider()
     
@@ -87,7 +111,8 @@ with st.sidebar:
                         
                     if label not in current_labels and label not in letta_client.INITIAL_FIXED_BLOCKS:
                         try:
-                            from memory.dll_manager import add_node
+                            from apu.mmu.controller import add_node
+                            from apu.mmu.block_factory import insert_node_by_type
                             if "dynamic_block_count" in dll_state and dll_state["dynamic_block_count"] < dll_state["dynamic_block_max"]:
                                 dll_node = {
                                     "id": label,
@@ -97,9 +122,6 @@ with st.sidebar:
                                     "is_fixed": False,
                                     "active": True
                                 }
-                                # Use a safe add that doesn't trigger weaviate unless we want to, or use insert_node_by_type
-                                # Actually we should just insert to DLL
-                                from memory.block_factory import insert_node_by_type
                                 dll_node["last_modified"] = datetime.now().isoformat()
                                 dll_node["access_count"] = 0
                                 dll_node["created_by"] = "recovered"
@@ -151,7 +173,7 @@ if not st.session_state.memory_facts:
 # --- HEADER ---
 c1, c2 = st.columns([4, 1])
 with c1:
-    st.title("✈️ Travel Agent — Agent OS/DLL Memory")
+    st.title("Agent OS / APU : Travel Agent use case")
 with c2:
     if st.button("🔄 Sync Cloud", use_container_width=True, help="Force reload from Letta Cloud"):
         with st.spinner("Forcing Cloud Sync..."):
@@ -179,10 +201,44 @@ with c2:
             st.success("Synced!")
             st.rerun()
 
-m1, m2, m3 = st.columns(3)
+# --- HEADER METRICS ---
+l1_summary = block_cache.get_summary()
+m1, m2, m3, m4 = st.columns(4)
 m1.metric("Dynamic Blocks", f"{dll_state['dynamic_block_count']} / {dll_state['dynamic_block_max']}")
 m2.metric("Fixed Blocks", "4")
 m3.metric("Injected into LLM Context", f"{len(st.session_state.last_injected_ids)}")
+m4.metric(
+    "L1 Cache Hit Rate",
+    f"{l1_summary['global_hit_rate'] * 100:.0f}%" if l1_summary['total_requests'] > 0 else "—",
+    help=f"{l1_summary['total_hits']} hits / {l1_summary['total_requests']} requests · {l1_summary['cached_blocks']} blocks in cache",
+)
+
+# --- L1 CACHE PANEL ---
+with st.expander("🗄️ L1 Block Cache — Performance", expanded=False):
+    l1_metrics = block_cache.get_metrics()
+    if not l1_metrics:
+        st.caption("No cache activity yet — start chatting to populate L1.")
+    else:
+        rows = []
+        for bid, m in l1_metrics.items():
+            total = m["total_requests"]
+            hit_rate_pct = f"{m['hit_rate'] * 100:.0f}%" if total > 0 else "—"
+            status = "🟢 warm" if m["in_cache"] else "❄️ cold"
+            heat = "🔥" if m["write_backs"] >= 3 else ("✏️" if m["write_backs"] >= 1 else "—")
+            rows.append({
+                "Block": bid,
+                "Status": status,
+                "Hits": m["l1_hits"],
+                "Misses": m["l1_misses"],
+                "Hit Rate": hit_rate_pct,
+                "Write-backs": m["write_backs"],
+                "Heat": heat,
+            })
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.caption(
+            "🟢 warm = block is currently cached · ❄️ cold = evicted or never set · "
+            "🔥 = ≥3 write-backs (hot dynamic block) · ✏️ = 1–2 write-backs"
+        )
 
 st.divider()
 

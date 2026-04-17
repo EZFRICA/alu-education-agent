@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import asyncio
 
 # Add project root to path for memory module imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,13 +12,16 @@ from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from config import GEMINI_API_KEY, USER_ID
-from memory.dll_manager import search_memory, load_dll, save_dll, move_to_front, get_all_nodes
-from memory.context_compiler import compile_working_context, get_core_block_content
-from memory.block_detector import detect_new_block_opportunity
-from memory.block_factory import create_dynamic_block, update_block_content, delete_block_stitching
-from memory.letta_cloud_client import append_block, update_block
-from memory import weaviate_cloud_client as wcd_client
-from memory import letta_cloud_client as letta_client
+from apu.mmu.controller import search_memory, load_dll, save_dll, move_to_front, get_all_nodes
+from apu.core.pipeline import compile_working_context, get_core_block_content
+from apu.core.block_detector import detect_new_block_opportunity
+from apu.mmu.block_factory import create_dynamic_block, update_block_content, delete_block_stitching
+from apu.storage.letta_driver import append_block, update_block
+from apu.teu.tools import google_search
+from apu.core.scheduler import scheduler
+from langgraph.prebuilt import ToolNode
+from apu.storage import weaviate_driver as wcd_client
+from apu.storage import letta_driver as letta_client
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -64,16 +68,28 @@ async def _extract_and_update_memory(
     explicitly shared by the user and writes it back to the relevant Letta blocks.
     New information is appended to existing content, not overwritten.
     Non-critical: failures are logged as warnings and do not interrupt the response.
+
+    Optimization: all Letta reads are parallelized upfront into a content_cache,
+    eliminating the sequential double-read pattern (saves up to 2 Letta calls per block).
     """
     if not agent_id:
         return
 
-    # Read current state of each relevant block for deduplication
+    # 1. Parallel fetch — all block contents in a single asyncio.gather
+    fetch_tasks = [get_core_block_content(agent_id, block["id"]) for block in relevant_blocks]
+    fetched_contents = await asyncio.gather(*fetch_tasks, return_exceptions=True)
+
+    # Build content_cache: block_id → str (fallback to empty on error)
+    content_cache: dict[str, str] = {}
     block_summaries = []
-    for block in relevant_blocks:
-        current = await get_core_block_content(agent_id, block["id"])
+    for block, content in zip(relevant_blocks, fetched_contents):
+        if isinstance(content, Exception):
+            logger.warning("Content fetch failed for '%s': %s", block["id"], content)
+            content = ""
+        safe_content = content or ""
+        content_cache[block["id"]] = safe_content
         block_summaries.append(
-            f'- {block["id"]} ({block["type"]}): "{current.strip() or "[empty]"}"'
+            f'- {block["id"]} ({block["type"]}): "{safe_content.strip() or "[empty]"}"'
         )
 
     # Dynamic instructions based on current DLL blocks
@@ -132,29 +148,31 @@ Return ONLY a valid JSON object, keys must match the block IDs above:
         for block_id, new_info in updates.items():
             if not new_info or not new_info.strip():
                 continue
-            
-            current = (await get_core_block_content(agent_id, block_id)).strip()
-            
-            # Smart Clear: remove placeholders like "[No active trip]" if we have new real data
+
+            # Use content_cache — no second Letta HTTP call
+            current = content_cache.get(block_id, "").strip()
+
+            # Smart Clear: remove placeholders like "[No active trip]" if we have real data
             if current.startswith("[") and current.endswith("]"):
                 current = ""
-            
+
             merged = (
                 (current + "\n" + new_info.strip()).strip()
                 if current
                 else new_info.strip()
             )
-            
-            # Transactional Update (Async Sync Letta + Weaviate)
+
+            # Transactional Update — pass old_content to skip the internal rollback snapshot read
             node = dll["nodes"].get(block_id)
             if node:
                 await update_block_content(
-                    block_id, 
-                    merged, 
-                    node.get("keywords", []), 
-                    dll, 
-                    letta_client, 
-                    wcd_client
+                    block_id,
+                    merged,
+                    node.get("keywords", []),
+                    dll,
+                    letta_client,
+                    wcd_client,
+                    old_content=content_cache.get(block_id),
                 )
                 logger.info("Memory write-back (ACID): '%s' updated.", block_id)
 
@@ -213,17 +231,19 @@ INSTRUCTIONS:
     # Configure LLM based on search toggle
     current_llm = _llm
     if state.get("search_enabled"):
-        current_llm = _llm.bind(tools=[{"google_search": {}}])
+        current_llm = _llm.bind_tools([google_search])
 
-    # Determine message payload based on memory_only_mode
+    sys_msg = SystemMessage(content=system_prompt)
+    
+    # Model Call (Memory-Only Mode checking)
     if state.get("memory_only_mode"):
-        # Find the last human message
+        # Strip history: pass ONLY the system prompt (DLL context) and the final User query
         last_human_message = next((msg for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
-        payload = [SystemMessage(content=system_prompt)]
+        payload = [sys_msg]
         if last_human_message:
             payload.append(last_human_message)
     else:
-        payload = [SystemMessage(content=system_prompt)] + messages
+        payload = [sys_msg] + messages
 
     response = await current_llm.ainvoke(payload)
 
@@ -260,10 +280,14 @@ INSTRUCTIONS:
         proposed_block_config = proposal
         logger.info("Block proposal: '%s' (%s).", proposal["proposed_id"], proposal["type"])
 
-    # 7. Move-To-Front
+    # 7. Move-To-Front (DEFERRED TO GC WORKER)
     if relevant_blocks:
-        dll = move_to_front(relevant_blocks[0]["id"], dll)
-        save_dll(dll)
+        await scheduler.push(
+            "GC_OPTIMIZE", 
+            {"block_id": relevant_blocks[0]["id"]}, 
+            priority=3 # Idle priority
+        )
+        logger.debug("GC Optimization PUSHED for '%s'.", relevant_blocks[0]["id"])
 
     msg = AIMessage(content=text_content)
     msg.name = "Planner"
@@ -275,6 +299,15 @@ INSTRUCTIONS:
     }
 
 
+def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
+    """Determines if the model wants to call a tool or end the chat."""
+    messages = state["messages"]
+    last_message = messages[-1]
+    if last_message.tool_calls:
+        return "tools"
+    return END
+
+
 def route_supervisor(state: AgentState) -> Literal["__end__"]:
     """Single-node graph — always terminates after the Planner."""
     return END
@@ -283,7 +316,19 @@ def route_supervisor(state: AgentState) -> Literal["__end__"]:
 def create_dll_agent_graph():
     """Build and compile the LangGraph agent workflow."""
     workflow = StateGraph(AgentState)
+    
     workflow.add_node("Planner", planner_node_dll)
+    workflow.add_node("tools", ToolNode([google_search]))
+    
     workflow.add_edge(START, "Planner")
-    workflow.add_conditional_edges("Planner", route_supervisor)
+    
+    # Conditional edge: Planner -> tools OR end
+    workflow.add_conditional_edges(
+        "Planner",
+        should_continue,
+    )
+    
+    # Edge: tools -> Planner (to process tool results)
+    workflow.add_edge("tools", "Planner")
+    
     return workflow.compile()

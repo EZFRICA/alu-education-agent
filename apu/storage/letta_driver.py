@@ -151,7 +151,7 @@ async def send_message(agent_id: str, working_context: str, user_query: str) -> 
 if __name__ == "__main__":
     import sys
     import asyncio
-    from dll_manager import load_dll, save_dll
+    from apu.mmu.controller import load_dll, save_dll
     if "--create-agent" in sys.argv:
         logger.info("Creating travel planning agent...")
         agent_id = asyncio.run(create_travel_agent())

@@ -5,10 +5,11 @@ All methods are now async to support high-concurrency with FastAPI.
 
 from datetime import datetime, timezone
 import asyncio
+from typing import Optional
 from weaviate.classes.query import MetadataQuery, Filter
 from weaviate.classes.tenants import Tenant
 from weaviate.util import generate_uuid5
-from memory.schema import get_weaviate_client_async, init_all_schemas
+from apu.storage.schema import get_weaviate_client_async, init_all_schemas
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -124,22 +125,53 @@ async def fetch_all_block_indexes(client, agent_id: str) -> list[dict]:
 
 # ── Content operations (TravelFixed / TravelDynamic) ───────────────────────────
 
-async def ingest_block(client, collection_name: str, block_id: str,
-                      block_type: str, content: str, agent_id: str, tags: list[str] = None) -> None:
-    """Ingest a block's content into its isolated tenant (Async)."""
+async def upsert_block_content(client, collection_name: str, block_id: str,
+                         block_type: str, content: str, agent_id: str, tags: list[str] = None) -> None:
+    """
+    Insert or update a block's content in its isolated tenant (Async).
+    Uses deterministic UUID to prevent duplicates and allow O(1) retrieval.
+    """
     collection = client.collections.get(collection_name)
     await _ensure_tenant_async(collection, agent_id)
     
     tenant_coll = collection.with_tenant(agent_id)
-    await tenant_coll.data.insert({
+    obj_uuid = generate_uuid5(f"{agent_id}_{block_id}")
+    
+    properties = {
         "content": content,
         "block_id": block_id,
-        "agent_id": agent_id,
         "block_type": block_type,
         "tags": tags or [],
         "updated_at": datetime.now(timezone.utc),
-    })
-    logger.debug("Block '%s' ingested for tenant '%s' in '%s'.", block_id, agent_id, collection_name)
+    }
+
+    try:
+        # Update if exists
+        await tenant_coll.data.update(uuid=obj_uuid, properties=properties)
+        logger.debug("Block content updated: '%s' (uuid: %s) in '%s'.", block_id, obj_uuid, collection_name)
+    except Exception:
+        # Insert if new
+        await tenant_coll.data.insert(uuid=obj_uuid, properties=properties)
+        logger.debug("Block content inserted: '%s' (uuid: %s) in '%s'.", block_id, obj_uuid, collection_name)
+
+
+async def get_block_content(client, collection_name: str, block_id: str, agent_id: str) -> Optional[str]:
+    """
+    Directly retrieve block content by its deterministic ID (Async).
+    Bypasses Letta Cloud for ultra-low latency L3/L4 reading.
+    """
+    collection = client.collections.get(collection_name)
+    tenant_coll = collection.with_tenant(agent_id)
+    obj_uuid = generate_uuid5(f"{agent_id}_{block_id}")
+    
+    try:
+        obj = await tenant_coll.query.fetch_object_by_id(obj_uuid)
+        if obj and obj.properties:
+            return obj.properties.get("content")
+    except Exception as e:
+        logger.debug("Direct fetch failed for block '%s' in '%s': %s", block_id, collection_name, e)
+    
+    return None
 
 
 async def delete_block_vectors(client, block_id: str, agent_id: str) -> None:
