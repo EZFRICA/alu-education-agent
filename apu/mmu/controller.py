@@ -30,13 +30,13 @@ def get_dll_lock(agent_id: str) -> asyncio.Lock:
 # ── Adaptive certainty thresholds by block type ───────────────────────────────
 # Certainty: 0.0 (opposite) to 1.0 (identical) — maps to old similarity scores
 CERTAINTY_THRESHOLDS = {
-    "fondamental": 0.55,  # Profile/prefs — low threshold, frequently above
-    "projet":      0.60,  # Itinerary — neutral threshold
+    "fondamental": 0.70,  # Profile/prefs — low threshold, frequently above
+    "projet":      0.75,  # Itinerary — neutral threshold
     "temp":        0.80,  # Session — high threshold, jump to TAIL often
 }
 
 # Minimum certainty for a block to be included in the working context
-MIN_RELEVANCE_CERTAINTY = 0.50
+MIN_RELEVANCE_CERTAINTY = 0.70
 
 
 async def init_dll() -> dict:
@@ -229,28 +229,24 @@ async def search_memory(query: str, dll: dict, strict_manual: bool = False) -> l
     # 3. BMJ Fill: Use non-checked dynamic blocks if they meet the semantic threshold.
     # The absolute maximum blocks we can ever send is 12.
     
-    forced_blocks = []
-    dynamic_candidates = []
+    top_blocks = []
     
+    # ── DEMAND PAGING LOGIC ──────────────────────────────────────────────────
     for node_id in traversal_order:
         node = dll["nodes"][node_id]
         certainty = certainty_map.get(node_id, 0.0)
         
         is_fixed = node.get("is_fixed", False)
-        is_active = node.get("active", True)
         
-        # Fixed blocks or user-forced dynamic blocks
-        if is_fixed or is_active:
-            forced_blocks.append((certainty, node))
-        else:
-            # BMJ candidates: Unforced dynamic blocks
-            if certainty >= MIN_RELEVANCE_CERTAINTY:
-                dynamic_candidates.append((certainty, node))
-                
-    # Sort candidates by certitude
-    dynamic_candidates.sort(key=lambda x: x[0], reverse=True)
-    
-    top_blocks = [item[1] for item in forced_blocks]
+        # We ALWAYS force 'current_session' as it's the scratchpad for the APU.
+        # For all other blocks (fixed OR dynamic), we only 'Page In' if relevant enough.
+        if node_id == "current_session":
+            top_blocks.append(node)
+        elif certainty >= MIN_RELEVANCE_CERTAINTY:
+            top_blocks.append(node)
+            
+    # The absolute maximum blocks we can ever send is 12.
+    # We still keep the semantic page fault logic below to catch new archival blocks.
     
     if not strict_manual:
         for certainty, res in [(certainty_map[r["block_id"]], r) for r in weaviate_results]:
