@@ -128,7 +128,7 @@ uv run apu/storage/sync_util.py         # Warm up the L3 Index
 
 ### 4. Power On
 ```bash
-uv run streamlit run dashboard/app.py
+uv run streamlit run dashboard/apu_dashboard.py
 ```
 
 ---

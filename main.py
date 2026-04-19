@@ -16,7 +16,7 @@ def main():
     
     if choice == "1":
         print("\n[Launching Dashboard...] (Press Ctrl+C to stop)")
-        subprocess.run(["uv", "run", "streamlit", "run", "dashboard/app.py"])
+        subprocess.run(["uv", "run", "streamlit", "run", "dashboard/apu_dashboard.py"])
     elif choice == "2":
         subprocess.run([sys.executable, "agent_os/cli_driver.py"])
     elif choice == "3":
