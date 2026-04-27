@@ -46,3 +46,8 @@ apu_runtime.log
 logs_ui/
 agent/
 visualizer/
+apu/
+agent_os/
+main.py
+dashboard/
+config.py
