@@ -1,0 +1,41 @@
+{
+  "files": {
+    "6eme_francais": {
+      "class": "6eme",
+      "subject": "francais",
+      "hash": "sha256:8cde7a3d85d7410910a1e86d0edac7ddb8c5d4b85bba01282a3fb18824e60709",
+      "downloaded_at": "2026-04-27T10:48:56.174082"
+    },
+    "6eme_maths": {
+      "class": "6eme",
+      "subject": "maths",
+      "hash": "sha256:3ed64a092fd60f37b2b838ca5f252cff4d2413622e0e047161e4bfe74ee80aee",
+      "downloaded_at": "2026-04-27T10:54:01.464936"
+    },
+    "5eme_histoire": {
+      "class": "5eme",
+      "subject": "histoire",
+      "hash": "sha256:a4113a62b07aeaeaf73126602b2db7eec7739b21114afe66cacdbb4bd4263ea5",
+      "downloaded_at": "2026-04-27T12:43:27.903030"
+    },
+    "6eme_math": {
+      "class": "6eme",
+      "subject": "math",
+      "hash": "sha256:4e49f297678582ac5df95ae1b71a305c461796cd152049acdfc54fab920c0a84",
+      "downloaded_at": "2026-04-27T23:43:00.634353"
+    },
+    "6eme_history": {
+      "class": "6eme",
+      "subject": "history",
+      "hash": "sha256:0f6adbc200952bbb84d0cf98b289c3d7a0fd94af7aa65fb01d75cc8c71b3a60a",
+      "downloaded_at": "2026-04-28T00:01:21.425180"
+    },
+    "6eme_english": {
+      "class": "6eme",
+      "subject": "english",
+      "hash": "sha256:e7f0ca07c50daf8047d27bc882e2c7b37bfbbccd83b53c9cbad3cae4eab70853",
+      "downloaded_at": "2026-04-28T00:04:07.209214"
+    }
+  },
+  "last_sync": null
+}

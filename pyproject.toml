@@ -1,15 +1,21 @@
 [project]
-name = "ux-driven-agent-memory"
+name = "alu-education-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "ALU Education Agent — local-first AI tutor powered by Gemma 4 via Ollama"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "google-auth>=2.49.2",
+    "google-cloud-storage>=3.4.1",
     "google-generativeai>=0.8.6",
+    "lancedb>=0.30.2",
     "langchain>=1.2.12",
     "langchain-google-genai>=4.2.1",
+    "langchain-ollama>=1.1.0",
     "langgraph>=1.1.2",
     "letta>=0.16.6",
+    "pandas>=3.0.2",
+    "pyarrow>=24.0.0",
     "python-dotenv>=1.2.2",
     "streamlit>=1.55.0",
     "streamlit-chat>=0.1.1",

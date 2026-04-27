@@ -1,110 +1,90 @@
-# Agent OS : The APU Architecture 🧠⚡
+# 🤖 Akili: The Agentic Processor for Education (APU)
 
-Welcome to the **Agent Processor Unit (APU)**, a state-of-the-art architecture for building high-performance, resilient, and human-controllable AI agents. 
-
-This project moves away from simple RAG pipelines to implement a full **Semantic Operating System** mimicking hardware-level memory management and task scheduling.
+**Akili** is a high-performance, local-first pedagogical agent designed as an **Agentic Processor Unit (APU)**. It moves beyond simple RAG by implementing a multi-tier memory hierarchy (L1-L3) and a Socratic tutoring engine, ensuring that students learn through guided discovery rather than just receiving answers.
 
 ---
 
-## 🗺️ APU System Overview
+## 🗺️ APU System Architecture
 
 ```mermaid
 graph TD
-    subgraph UI ["User Interface (Streamlit)"]
-        Dashboard["Dashboard Monitor"]
+    subgraph CLOUD ["Cloud Registry (Sovereign)"]
+        GCS[("Google Cloud Storage")]
+        Manifest["manifest.json"]
+        Parquets["Course Parquets (.parquet)"]
     end
 
-    subgraph OS ["Agent OS (LangGraph)"]
-        Graph["Operating System Graph"]
-        Planner["Planner Node"]
-    end
-
-    subgraph APU ["Agent Processor Unit"]
+    subgraph CLIENT ["Student APU (Local-First)"]
         direction TB
         
-        subgraph CORE ["Core Units"]
-            Scheduler["Scheduler (Control Unit)"]
-            Pipeline["Data Pipeline"]
+        subgraph UI ["User Interface"]
+            Dashboard["Streamlit Monitor"]
         end
 
-        subgraph MEM ["MMU (Memory Management Unit)"]
+        subgraph OS ["Agent Runtime (LangGraph)"]
+            Graph["Socratic Reasoning Graph"]
+            Planner["Planner Node"]
+        end
+
+        subgraph MMU ["Memory Management Unit"]
             L1["L1 Cache (RAM)"]
-            DLL["DLL Controller"]
-            Paging["LRU Paging Engine"]
+            L2["L2 Storage (DLL / JSON)"]
+            L3["L3 Archive (LanceDB / Vector)"]
         end
 
-        subgraph IO ["TEU (Tool Execution Unit)"]
-            IOCache["L1 IO Cache"]
-            Tools["Search Driver"]
+        subgraph SYNC ["Sync Manager"]
+            Sync["Auto-Updater"]
         end
-    end
-
-    subgraph STORAGE ["Storage Hierarchy"]
-        L3[("L3 Weaviate (Local Disk)")]
-        L4[("L4 Letta Cloud (Archival)")]
     end
 
     %% Connections
-    Dashboard <--> Graph
-    Graph <--> Planner
-    Planner <--> Pipeline
+    GCS <--> Sync
+    Sync --> L3
+    Sync --> L2
     
-    %% MMU Flow
-    Pipeline <--> L1
-    L1 <--> L3
-    L3 <--> L4
-    
-    %% Scheduler Flow
-    Planner -- Deferred Write --> Scheduler
-    Scheduler -- Async Sync --> L4
-    Scheduler -- GC / MTF --> DLL
-    
-    %% IO Flow
-    Planner <--> IOCache
-    IOCache <--> Tools
+    Dashboard <--> OS
+    OS <--> MMU
+    MMU <--> L1
+    MMU <--> L2
+    MMU <--> L3
 ```
 
 ---
 
-## 🏗️ The APU Micro-Architecture
+## 🧠 Core Technologies
 
-The system is organized into specialized units, just like a physical CPU:
+### 1. **Tiered Memory Hierarchy (DLL)**
+Akili uses a **Dynamic Learning Layer (DLL)** to manage student context with zero latency:
+*   **L1 Cache (RAM)**: In-process memory blocks for immediate reasoning (~0ms).
+*   **L2 Storage (DLL)**: Persistent student profile and learning preferences stored locally.
+*   **L3 Archive (LanceDB)**: High-speed local vector database for large-scale course materials and past session archival.
 
-### 1. **Scheduler (Control Unit)**
-The `apu/core/scheduler.py` is the heart of the system. It manages an asynchronous **Priority Queue** to decouple user interaction from slow background tasks.
-*   **Deferred Writes**: Memory updates to Letta Cloud (L4) are offloaded to background workers.
-*   **Auto-Retry**: Failed cloud syncs are retried up to 3 times with exponential backoff.
-*   **Background GC**: Memory reordering (MTF) is handled as a "Garbage Collection" task during idle cycles.
+### 2. **Socratic Tutoring Engine**
+Powered by **Google Gemini**, Akili follows a strict pedagogical framework:
+*   **Guided Discovery**: Never gives the answer directly; uses questions to lead the student.
+*   **Analogy Injection**: Dynamically adapts explanations based on student interests (e.g., sports, music) retrieved from L2 memory.
+*   **Contextual Awareness**: Merges real-time course search with long-term student history.
 
-### 2. **Semantic MMU (Memory Management Unit)**
-The `apu/mmu/` manages the **Tiered Memory Hierarchy** to ensure sub-millisecond context retrieval:
-*   **L1 Cache (RAM)**: In-process memory (~0ms).
-*   **L3 Weaviate (Disk)**: Predictable O(1) retrieval via deterministic UUIDs (~10ms).
-*   **L4 Letta (Cloud)**: Long-term archival and backup.
-*   **LRU Paging**: Automatically ejects least recently used blocks when the context window is full (12 blocks limit).
-*   **Page Fault Handling**: Automatically "Pages In" relevant blocks from L3/L4 back to L1 if they are needed by the conversation.
-
-### 3. **TEU (Tool Execution Unit / IO Controller)**
-The `apu/teu/` manages external interactions (Google Search, APIs):
-*   **L1 IO Cache**: Results from external tools are cached (15 min TTL) to avoid redundant and expensive API calls.
-*   **Managed Execution**: Tools are executed in isolation with performance monitoring.
-
-### 4. **Inference Engine (ALU)**
-The `agent_os/graph.py` uses Gemini (Flash Lite) as the main logic unit, processing the **Working Context** compiled by the MMU.
+### 3. **Cloud-Native Registry**
+*   **Manifest-driven**: The client synchronizes only what it needs based on a central `manifest.json`.
+*   **Parquet Distribution**: Courses are packaged as high-performance Parquet files for efficient local vectorization.
+*   **Remote Prompts**: System instructions can be updated globally via the registry without updating the client code.
 
 ---
 
-## 📁 New Project Structure
+## 📁 Project Structure
 
 ```text
-/apu
-  ├── core/         # The "Brain" (Scheduler, Pipeline, Block Detector)
-  ├── mmu/          # Memory Management (Controller, Cache L1, Block Factory)
-  ├── teu/          # IO Controller (Tool execution, L1 IO Cache)
-  └── storage/      # Drivers (Letta, Weaviate, Schema)
-/agent_os           # High-level Operating System Graph (LangGraph)
-/dashboard          # Streamlit UI / APU Monitor
-/research           # Hardware design & Architecture MDs
+/cloud_registry     # Centralized content management & distribution
+  ├── courses/      # Raw MD curriculum & prompts
+  ├── pipeline/     # Batch processing & GCS upload scripts
+  └── registry/     # Generated manifest & parquet files
+/app_local          # Local-first student application
+  ├── core/         # APU logic (Block Detector, Scheduler)
+  ├── mmu/          # Memory Management (L1 Cache, DLL Controller)
+  ├── runtime/      # Agent Graph (LangGraph)
+  ├── storage/      # Local Database (LanceDB)
+  └── ui/           # Streamlit Dashboard
 ```
 
 ---
@@ -116,39 +96,36 @@ The `agent_os/graph.py` uses Gemini (Flash Lite) as the main logic unit, process
 uv sync
 ```
 
-### 2. Configure APU
-Follow the `.env.example` to set your Gemini, Letta, and Weaviate keys.
-
-### 3. Initialize Drivers (Hardware Init)
-```bash
-uv run apu/storage/schema.py            # Init L3 Schema
-uv run apu/storage/letta_driver.py --create-agent  # Provision L4 Agent
-uv run apu/storage/sync_util.py         # Warm up the L3 Index
+### 2. Configure Environment
+Create a `.env` file based on `.env.example`:
+```env
+GEMINI_API_KEY=your_key
+GCS_BUCKET_NAME=your_bucket
+GOOGLE_APPLICATION_CREDENTIALS=path/to/creds.json
 ```
 
-### 4. Power On
+### 3. Populate the Registry (Cloud Side)
+Before the student can learn, you must process the curriculum and upload it to your cloud storage:
 ```bash
-uv run streamlit run dashboard/apu_dashboard.py
+# Processes all subjects in cloud_registry/config/curriculum.yaml
+uv run python cloud_registry/pipeline/batch_pipeline.py --upload
+```
+
+### 4. Launch Student Dashboard
+```bash
+uv run python app_local/main.py
 ```
 
 ---
 
-## 🧪 Advanced Scenarios
+## 🧪 Advanced Features
 
-### **The "Page Fault" Test**
-1.  Fill the memory with 12 dynamic blocks.
-2.  Create a 13th block: Watch the MMU **Page Out** the oldest block (LRU) in the logs.
-3.  Ask a question about the "paged out" block: Watch the MMU trigger a **Page Fault** and automatically reload it from Weaviate back into the DLL.
-
-### **The "Letta-as-a-Disk" Sync**
-1.  Ask a question that updates a block.
-2.  The Agent responds **instantly** (Hit L1/L3).
-3.  Observe the terminal: The Scheduler pushes a `SYNC_LETTA` task and executes it in the background while you are already reading the answer.
+### **The "Memory Recall" Demo**
+1.  **Sync**: In the dashboard, click "Check for Updates" to download the registry.
+2.  **Identity**: Tell Akili: *"My name is Marc and I love basketball."*
+3.  **L1 Cache**: Watch the **L1 Cache** update instantly in the dashboard monitor.
+4.  **L2 Persistence**: Restart the app; the **L2 Storage** persists your profile.
+5.  **Pedagogy**: Ask about a historical event. Akili will explain it using a basketball analogy based on your stored profile.
 
 ---
-
-## 🚀 Scaling to Production
-The APU is designed to be **Distributed-Ready**. By replacing the `metadata_links.json` with **Redis**, you can run millions of APU instances in a cluster, sharing a high-speed L1/L3 context while maintaining a consistent L4 Cloud state.
-
----
-*Built with ❤️ by Ezekias for the next generation of Agentic Systems.*
+*Built for the future of personalized, autonomous education.*

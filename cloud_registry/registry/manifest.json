@@ -1,0 +1,88 @@
+{
+  "version": "202604272324",
+  "generated_at": "2026-04-27T23:24:49.925307",
+  "catalog": {
+    "6eme": [
+      "math",
+      "english",
+      "history"
+    ],
+    "5eme": [
+      "math",
+      "english",
+      "history"
+    ]
+  },
+  "files": [
+    {
+      "id": "5eme_english",
+      "class": "5eme",
+      "subject": "english",
+      "version": "v1",
+      "filename": "5eme_english_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/5eme_english_v1.parquet",
+      "hash": "sha256:becfc5c11cc34932db3599bc23058e6e96b3bdd99462a68bbd1d2f81dc243964",
+      "size_bytes": 98947,
+      "updated_at": "2026-04-27T23:24:49.923807"
+    },
+    {
+      "id": "5eme_history",
+      "class": "5eme",
+      "subject": "history",
+      "version": "v1",
+      "filename": "5eme_history_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/5eme_history_v1.parquet",
+      "hash": "sha256:dadbfcd6c18ed451d8421721f2c2262ca1bdcb374cc3e4a91acab9f07e7d08f6",
+      "size_bytes": 102064,
+      "updated_at": "2026-04-27T23:24:49.924223"
+    },
+    {
+      "id": "5eme_math",
+      "class": "5eme",
+      "subject": "math",
+      "version": "v1",
+      "filename": "5eme_math_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/5eme_math_v1.parquet",
+      "hash": "sha256:66df690a0deb0db254913587d27a2c67d76ec1931e007e623e3dc05d598eec90",
+      "size_bytes": 101054,
+      "updated_at": "2026-04-27T23:24:49.924495"
+    },
+    {
+      "id": "6eme_english",
+      "class": "6eme",
+      "subject": "english",
+      "version": "v1",
+      "filename": "6eme_english_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/6eme_english_v1.parquet",
+      "hash": "sha256:e7f0ca07c50daf8047d27bc882e2c7b37bfbbccd83b53c9cbad3cae4eab70853",
+      "size_bytes": 38774,
+      "updated_at": "2026-04-27T23:24:49.924684"
+    },
+    {
+      "id": "6eme_history",
+      "class": "6eme",
+      "subject": "history",
+      "version": "v1",
+      "filename": "6eme_history_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/6eme_history_v1.parquet",
+      "hash": "sha256:0f6adbc200952bbb84d0cf98b289c3d7a0fd94af7aa65fb01d75cc8c71b3a60a",
+      "size_bytes": 100696,
+      "updated_at": "2026-04-27T23:24:49.924995"
+    },
+    {
+      "id": "6eme_math",
+      "class": "6eme",
+      "subject": "math",
+      "version": "v1",
+      "filename": "6eme_math_v1.parquet",
+      "url": "https://storage.googleapis.com/akili-registry/courses/6eme_math_v1.parquet",
+      "hash": "sha256:4e49f297678582ac5df95ae1b71a305c461796cd152049acdfc54fab920c0a84",
+      "size_bytes": 100764,
+      "updated_at": "2026-04-27T23:24:49.925258"
+    }
+  ],
+  "prompts": {
+    "url": "https://storage.googleapis.com/akili-registry/prompts/prompts_v1.json",
+    "hash": "sha256:d146a175154d8220cf3d9e3589d196d6dc8acd5a4bf656ef457bbdfc81f15f45"
+  }
+}

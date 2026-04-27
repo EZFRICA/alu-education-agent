@@ -1,0 +1,108 @@
+{
+  "agent_id": "agent-a5b2870a-9f07-4ea0-9674-f34927f9da59",
+  "head_id": "current_session",
+  "tail_id": "student_profile",
+  "dynamic_block_count": 0,
+  "dynamic_block_max": 5,
+  "created_at": "2026-04-27T23:38:56.500573",
+  "last_modified": "2026-04-28T00:04:07.211240",
+  "course_selection": {
+    "class": "6eme",
+    "subject": "english"
+  },
+  "nodes": {
+    "current_session": {
+      "id": "current_session",
+      "label": "Current Session",
+      "type": "temp",
+      "is_fixed": true,
+      "created_by": "system",
+      "keywords": [
+        "session",
+        "current",
+        "question",
+        "explain",
+        "today",
+        "now",
+        "help"
+      ],
+      "active": true,
+      "access_count": 0,
+      "last_accessed": "2026-04-27T23:38:56.501816",
+      "last_modified": "2026-04-27T23:38:56.501818",
+      "prev": null,
+      "next": "active_course"
+    },
+    "active_course": {
+      "id": "active_course",
+      "label": "6EME — English",
+      "type": "cours",
+      "is_fixed": true,
+      "created_by": "system",
+      "keywords": [
+        "course",
+        "subject",
+        "chapter",
+        "lesson",
+        "exercise",
+        "exam",
+        "homework",
+        "assignment",
+        "topic"
+      ],
+      "active": true,
+      "access_count": 0,
+      "last_accessed": "2026-04-27T23:38:56.501826",
+      "last_modified": "2026-04-28T00:04:07.211232",
+      "prev": "current_session",
+      "next": "learning_preferences"
+    },
+    "learning_preferences": {
+      "id": "learning_preferences",
+      "label": "Learning Preferences",
+      "type": "fondamental",
+      "is_fixed": true,
+      "created_by": "system",
+      "keywords": [
+        "learning",
+        "style",
+        "difficulty",
+        "strength",
+        "weakness",
+        "method",
+        "preference",
+        "practice"
+      ],
+      "active": true,
+      "access_count": 0,
+      "last_accessed": "2026-04-27T23:38:56.501835",
+      "last_modified": "2026-04-27T23:38:56.501837",
+      "prev": "active_course",
+      "next": "student_profile"
+    },
+    "student_profile": {
+      "id": "student_profile",
+      "label": "Student Profile",
+      "type": "fondamental",
+      "is_fixed": true,
+      "created_by": "system",
+      "keywords": [
+        "name",
+        "age",
+        "level",
+        "grade",
+        "school",
+        "language",
+        "goal",
+        "background"
+      ],
+      "active": true,
+      "access_count": 0,
+      "last_accessed": "2026-04-27T23:38:56.501838",
+      "last_modified": "2026-04-27T23:58:23.190633",
+      "prev": "learning_preferences",
+      "next": null,
+      "content": "The student's name is Toni."
+    }
+  }
+}
