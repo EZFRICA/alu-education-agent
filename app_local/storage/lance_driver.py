@@ -113,7 +113,11 @@ async def upsert_local_block(block_id: str, content: str, block_type: str,
     }]
     
     if "user_memory" not in db.list_tables():
-        db.create_table("user_memory", data=data)
+        try:
+            db.create_table("user_memory", data=data)
+        except Exception:
+            table = db.open_table("user_memory")
+            table.add(data)
     else:
         table = db.open_table("user_memory")
         # Simplified Upsert: we add (we could delete before for the same ID)
