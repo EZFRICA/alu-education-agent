@@ -47,6 +47,7 @@ graph TD
     MMU <--> L1
     MMU <--> L2
     MMU <--> L3
+    L1 <--> L2
 ```
 
 ---
