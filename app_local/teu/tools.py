@@ -39,7 +39,7 @@ async def google_search(query: str) -> str:
         def _sync_search():
             client = GeminiClient(api_key=GEMINI_API_KEY)
             response = client.models.generate_content(
-                model="gemini-flash-lite-latest",
+                model="gemma-4-26b-a4b-it",
                 contents=query,
                 config=GenerateContentConfig(
                     tools=[Tool(google_search=GoogleSearch())],

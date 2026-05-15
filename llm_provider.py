@@ -19,7 +19,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma:2b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemma-4-26b-a4b-it")
 
 logger = get_logger(__name__)
 
@@ -70,7 +70,7 @@ def get_extractor_llm():
         logger.debug("Extractor LLM: Gemini — model=%s (deterministic)", GEMINI_MODEL)
         return ChatGoogleGenerativeAI(
             model=GEMINI_MODEL,
-            temperature=0.0,
+            temperature=0.7,
             google_api_key=GEMINI_API_KEY,
         )
     else:
@@ -78,7 +78,7 @@ def get_extractor_llm():
         return ChatOllama(
             model=OLLAMA_MODEL,
             base_url=OLLAMA_BASE_URL,
-            temperature=0.0,
+            temperature=0.7,
             num_predict=1024,
             format="json",
         )
