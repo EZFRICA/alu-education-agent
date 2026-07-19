@@ -5,10 +5,10 @@
   "dynamic_block_count": 0,
   "dynamic_block_max": 5,
   "created_at": "2026-04-27T23:38:56.500573",
-  "last_modified": "2026-04-28T00:04:07.211240",
+  "last_modified": "2026-07-19T20:39:10.903872",
   "course_selection": {
-    "class": "6eme",
-    "subject": "english"
+    "class": "5eme",
+    "subject": "math"
   },
   "nodes": {
     "current_session": {
@@ -29,13 +29,14 @@
       "active": true,
       "access_count": 0,
       "last_accessed": "2026-04-27T23:38:56.501816",
-      "last_modified": "2026-04-27T23:38:56.501818",
+      "last_modified": "2026-07-19T20:39:10.903862",
       "prev": null,
-      "next": "active_course"
+      "next": "active_course",
+      "content": "The student is practicing identifying the place value of digits in multi-digit numbers, specifically focusing on the hundreds place in the number 4,325."
     },
     "active_course": {
       "id": "active_course",
-      "label": "6EME — English",
+      "label": "5EME — Math",
       "type": "cours",
       "is_fixed": true,
       "created_by": "system",
@@ -53,7 +54,7 @@
       "active": true,
       "access_count": 0,
       "last_accessed": "2026-04-27T23:38:56.501826",
-      "last_modified": "2026-04-28T00:04:07.211232",
+      "last_modified": "2026-07-19T20:37:08.424088",
       "prev": "current_session",
       "next": "learning_preferences"
     },
@@ -76,9 +77,10 @@
       "active": true,
       "access_count": 0,
       "last_accessed": "2026-04-27T23:38:56.501835",
-      "last_modified": "2026-04-27T23:38:56.501837",
+      "last_modified": "2026-05-15T13:01:09.739739",
       "prev": "active_course",
-      "next": "student_profile"
+      "next": "student_profile",
+      "content": "The student prefers a step-by-step, manageable approach to learning."
     },
     "student_profile": {
       "id": "student_profile",
@@ -99,7 +101,7 @@
       "active": true,
       "access_count": 0,
       "last_accessed": "2026-04-27T23:38:56.501838",
-      "last_modified": "2026-04-27T23:58:23.190633",
+      "last_modified": "2026-07-19T20:39:10.394779",
       "prev": "learning_preferences",
       "next": null,
       "content": "The student's name is Toni."

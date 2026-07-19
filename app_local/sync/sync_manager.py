@@ -57,6 +57,21 @@ async def _fetch_remote_json(blob_name: str) -> Optional[dict]:
         return None
 
 
+async def _fetch_json(url: str) -> Optional[dict]:
+    """Helper to fetch a JSON file over HTTP using httpx."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"[Sync] HTTP error fetching {url}: {response.status_code}")
+                return None
+    except Exception as e:
+        print(f"[Sync] Exception fetching {url}: {e}")
+        return None
+
+
 async def get_remote_catalog() -> dict:
     """
     Fetches the remote manifest and returns the course catalog.

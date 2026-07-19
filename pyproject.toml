@@ -12,6 +12,7 @@ dependencies = [
     "langchain>=1.2.12",
     "langchain-google-genai>=4.2.1",
     "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.2.1",
     "langgraph>=1.1.2",
     "letta>=0.16.6",
     "pandas>=3.0.2",

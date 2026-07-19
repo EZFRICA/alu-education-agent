@@ -35,6 +35,12 @@
       "subject": "english",
       "hash": "sha256:e7f0ca07c50daf8047d27bc882e2c7b37bfbbccd83b53c9cbad3cae4eab70853",
       "downloaded_at": "2026-04-28T00:04:07.209214"
+    },
+    "5eme_math": {
+      "class": "5eme",
+      "subject": "math",
+      "hash": "sha256:66df690a0deb0db254913587d27a2c67d76ec1931e007e623e3dc05d598eec90",
+      "downloaded_at": "2026-07-19T20:37:08.422694"
     }
   },
   "last_sync": null

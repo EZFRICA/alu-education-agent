@@ -51,3 +51,6 @@ agent_os/
 main.py
 dashboard/
 config.py
+context-switch.txt
+app_local/storage/akili_db/edu_registry.lance/
+app_local/storage/akili_db/user_memory.lance/
