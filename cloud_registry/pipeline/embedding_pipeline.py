@@ -11,12 +11,15 @@ from cloud_registry.storage_client import get_weaviate_client_async
 from logger import get_logger
 from weaviate.util import generate_uuid5
 from weaviate.classes.query import Filter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from llm_provider import build_embedder
 
 REGISTRY_COLLECTION = "RegistryIndex"
 
-# Embedding model (matches the one used by the local agent)
-_embedder = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
+# The SAME model the local agent queries with — both read embedding_config.py.
+# This was a second hardcoded "models/gemini-embedding-2", independent of the
+# client's configuration and of batch_pipeline's. allow_download=True because
+# this runs on a connected machine.
+_embedder = build_embedder(allow_download=True)
 
 async def index_to_registry(client, class_level: str, subject: str, base_dir: str):
     """Reads MD files, generates Gemini embeddings, and pushes to RegistryIndex."""

@@ -3,6 +3,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from app_local.core.block_proposal import BlockProposal
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -53,14 +54,24 @@ def detect_new_block_opportunity(history: List[Dict], dll: Dict) -> Optional[Dic
     )
 
     if trigger_count >= TOPIC_REPETITION_THRESHOLD:
-        # Propose a "course" type block to memorize the current topic
         proposed_id = f"dynamic_block_{dynamic_count + 1}"
         logger.info(f"Block opportunity detected (triggers={trigger_count}): {proposed_id}")
-        return {
-            "proposed_id": proposed_id,
-            "label": "Topic currently being learned",
-            "block_type": "course",
-            "reason": f"Student showed {trigger_count} active learning signals."
-        }
+
+        # The topic being learned, taken from the student's own words. This used
+        # to be absent entirely, so the executor wrote a block with no content.
+        topic = recent_user_messages[-1].strip()
+
+        return BlockProposal(
+            proposed_id=proposed_id,
+            label="Topic currently being learned",
+            # 'type', not 'block_type': the executor reads 'type', and the two
+            # keys silently disagreeing is what produced typeless blocks.
+            # 'temp' because a topic under study is recent context, and unlike
+            # 'course' it is a type the rest of the system actually knows.
+            type="temp",
+            initial_content=topic[:500],
+            keywords=[],
+            reason=f"Student showed {trigger_count} active learning signals.",
+        )
 
     return None

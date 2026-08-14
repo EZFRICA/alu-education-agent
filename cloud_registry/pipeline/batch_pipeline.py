@@ -27,8 +27,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
 from cloud_registry.config import settings as cloud_settings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from weaviate.util import generate_uuid5
+from embedding_config import normalize_vector
+from llm_provider import build_embedder
 import pandas as pd
 
 # ── Config paths ──────────────────────────────────────────────────────────────
@@ -41,7 +41,12 @@ MANIFEST_PATH  = REGISTRY_DIR / "manifest.json"
 REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Embedder (shared across all tasks) ───────────────────────────────────────
-_embedder = GoogleGenerativeAIEmbeddings(model=cloud_settings.EMBEDDING_MODEL)
+# The SAME model the client queries with — both read embedding_config.py.
+# This was GoogleGenerativeAIEmbeddings against a hardcoded model id, which is
+# how the registry ended up published at 3072 dimensions while the client
+# queried at 384. allow_download=True because the pipeline runs on a connected
+# machine by definition; the client never gets that flag.
+_embedder = build_embedder(allow_download=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +91,19 @@ async def process_one(class_level: str, subject: str) -> int:
         except Exception as e:
             print(f"    [ERROR] Embedding failed for {chapter_id}: {e}")
             continue
+
+        # Normalise before publishing: the client's certainty scale
+        # (1 - distance/2) is cosine similarity only if BOTH sides are unit
+        # length, and downloaded parquets go into LanceDB verbatim.
+        vector = normalize_vector(vector)
+
+        if len(vector) != cloud_settings.EMBEDDING_DIM:
+            raise SystemExit(
+                f"Embedder produced {len(vector)} dimensions but "
+                f"EMBEDDING_DIM is {cloud_settings.EMBEDDING_DIM}. Publishing "
+                f"this would ship a registry no client can search. Fix the "
+                f"configuration in embedding_config.py before continuing."
+            )
 
         blocks.append({
             "id":          chapter_id,
@@ -192,6 +210,10 @@ def generate_manifest(curriculum: dict, base_url: str, prompts_path: str = "") -
     manifest = {
         "version":      datetime.now().strftime("%Y%m%d%H%M"),
         "generated_at": datetime.now().isoformat(),
+        # Which vector space these parquets live in. The client compares this
+        # against its own configuration and refuses to search on a mismatch,
+        # instead of returning noise ranked as though it were relevant.
+        "embedding":    cloud_settings.embedding_stamp(),
         "catalog":      catalog,
         "files":        files_list,
     }

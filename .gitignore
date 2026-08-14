@@ -48,9 +48,13 @@ agent/
 visualizer/
 apu/
 agent_os/
-main.py
+/main.py
 dashboard/
-config.py
+/config.py
 context-switch.txt
 app_local/storage/akili_db/edu_registry.lance/
 app_local/storage/akili_db/user_memory.lance/
+
+# Bundled ONNX embedding model cache (~240MB) — populated by
+# scripts/fetch_embedding_model.py, shipped with the deployment, not with git.
+models/

@@ -1,8 +1,7 @@
 from datetime import datetime
 from typing import Optional
-import asyncio
 
-from app_local.core.scheduler import scheduler
+from app_local.config import settings
 from app_local.mmu.controller import update_node_content, save_dll, get_dll_lock
 from app_local.storage import lance_driver
 from logger import get_logger
@@ -124,6 +123,14 @@ async def page_out_block(block_id: str, dll: dict) -> dict:
     logger.info(f"Block '{block_id}' PAGED OUT (Moved to local storage).")
     return dll
 
+def _refuse_zero_vector(block_id: str):
+    raise ValueError(
+        f"create_dynamic_block('{block_id}') was given no vector. Writing a "
+        f"zero vector would put an unsearchable row into a semantic index; "
+        f"embed the content first (see auto_execute_block_proposal)."
+    )
+
+
 async def create_dynamic_block(
     block_id: str,
     label: str,
@@ -138,10 +145,21 @@ async def create_dynamic_block(
     Creates a dynamic block in the DLL and LanceDB.
     """
     if dll["dynamic_block_count"] >= dll["dynamic_block_max"]:
-        # Semantic MMU: Page Out oldest block
+        # Semantic MMU: page out the least recently accessed block.
+        #
+        # `.get(key, default)` returned the STORED None rather than the default,
+        # so min() compared None < None and raised TypeError -- the cap raised
+        # instead of evicting, and the working set was never bounded at all.
+        # A node that has never been accessed sorts oldest, by creation time.
         dynamic_nodes = [n for n in dll["nodes"].values() if not n.get("is_fixed")]
         if dynamic_nodes:
-            lru_node = min(dynamic_nodes, key=lambda x: x.get("last_accessed", "1970-01-01T00:00:00"))
+            def _lru_key(node):
+                return (
+                    node.get("last_accessed")
+                    or node.get("last_modified")
+                    or "1970-01-01T00:00:00"
+                )
+            lru_node = min(dynamic_nodes, key=_lru_key)
             await page_out_block(lru_node["id"], dll)
 
     if block_id in dll["nodes"]:
@@ -156,7 +174,9 @@ async def create_dynamic_block(
         block_type=block_type,
         class_level="local",
         subject="local",
-        vector=vector or ([0.0] * 768)
+        # A zero vector is equidistant from every query, so the block would be
+        # written and never retrievable. Callers must supply a real embedding.
+        vector=vector if vector else _refuse_zero_vector(block_id),
     )
 
     # 2. Update Local DLL State
@@ -206,19 +226,42 @@ async def update_block_content(
 
 async def auto_execute_block_proposal(proposal: dict) -> bool:
     """
-    Automatically executes a block proposal detected by the agent.
+    Execute a block proposal, or refuse it.
+
+    Returns True only if the block was really created and is really searchable.
+    Callers must honour the return value — the dashboard used to announce
+    "Entry created!" regardless.
     """
+    from app_local.core.block_proposal import validate
     from app_local.mmu.controller import load_dll
+
+    problem = validate(proposal)
+    if problem:
+        logger.error("Refusing block proposal: %s | %r", problem, proposal)
+        return False
+
+    try:
+        # A real embedding of the real content. Previously no vector was ever
+        # computed and create_dynamic_block fell back to a zero vector, which is
+        # equidistant from every query: the block was written and could never be
+        # retrieved. Refusing beats writing a permanently invisible block.
+        from llm_provider import get_embedder
+        vector = await get_embedder().aembed_query(proposal["initial_content"])
+    except Exception as e:
+        logger.error("Refusing block proposal: could not embed content (%s)", e)
+        return False
+
     try:
         dll_latest = await load_dll()
         await create_dynamic_block(
-            block_id=proposal.get("proposed_id"),
-            label=proposal.get("label"),
-            block_type=proposal.get("type"),
-            initial_content=proposal.get("initial_content"),
+            block_id=proposal["proposed_id"],
+            label=proposal["label"],
+            block_type=proposal["type"],
+            initial_content=proposal["initial_content"],
             keywords=proposal.get("keywords", []),
             created_by="Akili",
-            dll=dll_latest
+            dll=dll_latest,
+            vector=vector,
         )
         return True
     except Exception as e:

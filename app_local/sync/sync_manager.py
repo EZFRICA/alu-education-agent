@@ -9,6 +9,7 @@ import asyncio
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from app_local.config import settings
+from app_local.storage import lance_driver
 from app_local.storage.lance_driver import get_db
 
 # ── Local manifest path ───────────────────────────────────────────────────────
@@ -140,6 +141,25 @@ async def download_course(class_level: str, subject: str) -> Tuple[bool, str]:
     if not file_info:
         return False, f"Course '{class_level}/{subject}' not found in the registry."
 
+    # 2b. Refuse a registry built with a different embedder BEFORE downloading.
+    # The manifest carries the stamp, so this is knowable now rather than at the
+    # student's first question — and it saves pulling a parquet that cannot be
+    # searched anyway.
+    remote = manifest.get("embedding")
+    if remote:
+        if (remote.get("dim") != settings.EMBEDDING_DIM
+                or remote.get("model") != settings.EMBEDDING_MODEL):
+            return False, (
+                f"This registry was built with '{remote.get('model')}' at "
+                f"{remote.get('dim')} dimensions, but this device is configured "
+                f"for '{settings.EMBEDDING_MODEL}' at {settings.EMBEDDING_DIM}. "
+                f"Searching it would return noise. Regenerate the registry with "
+                f"the configured model, or change EMBEDDING_MODEL to match."
+            )
+    else:
+        print("[Sync] WARNING: registry manifest carries no embedding stamp — "
+              "it predates stamping. Import will be checked by dimension only.")
+
     # 3. Download the parquet file via GCS Client
     os.makedirs(settings.CACHE_DIR, exist_ok=True)
     temp_parquet = os.path.join(settings.CACHE_DIR, file_info["filename"])
@@ -161,7 +181,10 @@ async def download_course(class_level: str, subject: str) -> Tuple[bool, str]:
         db = get_db()
 
         # Robust check for table existence
-        all_tables = db.list_tables()
+        # list_table_names, never db.list_tables(): on lancedb 0.30.2 the latter
+        # returns a response model whose __contains__ never matches, so this
+        # branch was always taken and the else below was dead (S5-A / R1).
+        all_tables = lance_driver.list_table_names(db)
         if "edu_registry" not in all_tables:
             try:
                 db.create_table("edu_registry", data=df)
@@ -175,6 +198,10 @@ async def download_course(class_level: str, subject: str) -> Tuple[bool, str]:
             # Replace old entries for this class/subject
             table.delete(f"class_level = '{class_level}' AND subject = '{subject}'")
             table.add(df)
+
+        # Record which embedder produced these vectors, so a later model change
+        # is refused with a readable message instead of degrading silently.
+        lance_driver.write_stamp("edu_registry")
 
         # Cleanup temp file
         os.remove(temp_parquet)
@@ -214,49 +241,43 @@ async def download_prompts() -> Tuple[bool, str]:
     return True, "Prompts updated successfully."
 
 
-async def sync_with_registry():
+async def sync_with_registry() -> Tuple[bool, str]:
     """
-    Full synchronization: checks all locally downloaded courses against remote
-    manifest and updates any that have a newer hash.
+    Refresh the system prompts from the registry.
+
+    Was an inline re-implementation of download_prompts that read `updated`
+    without ever assigning it on three paths -- including the steady state where
+    everything is already current -- so the dashboard's "Check for Updates"
+    button raised UnboundLocalError on every press after the first successful
+    one. download_prompts is the correct implementation and was never called;
+    the duplicate is gone rather than patched.
     """
     print("Starting synchronization with Akili registry...")
 
-    manifest = await _fetch_json(settings.MANIFEST_URL)
+    prompts_path = os.path.join(
+        os.path.dirname(settings.LANCE_DB_PATH), "prompts.json"
+    )
+    manifest = await _fetch_remote_json("manifest.json")
     if not manifest:
-        print("Error: Unable to reach the registry (check your connection).")
-        return
+        return False, "Unable to reach the registry (check your connection)."
 
-    # --- Part 2: Sync Prompts ---
-    if "prompts" in manifest:
-        print("  Checking for prompt updates...")
-        prompts_info = manifest["prompts"]
-        
-        # Simple check: do we have a local prompts file?
-        prompts_path = os.path.join(os.path.dirname(settings.LANCE_DB_PATH), "prompts.json")
-        needs_update = True
-        
-        if os.path.exists(prompts_path):
-            local_hash = get_file_hash(prompts_path)
-            if local_hash == prompts_info["hash"]:
-                needs_update = False
-        
-        if needs_update:
-            print("  Updating system prompts...")
-            # We reuse the logic from _fetch_remote_json (using blob_name)
-            # The prompt file in GCS is at: prompts/prompts_v1.json
-            prompts_data = await _fetch_remote_json("prompts/prompts_v1.json")
-            if prompts_data:
-                with open(prompts_path, "w", encoding="utf-8") as f:
-                    json.dump(prompts_data, f, indent=2, ensure_ascii=False)
-                updated = True
-                print("  ✅ Prompts updated.")
-            else:
-                print("  ❌ Failed to update prompts.")
+    if "prompts" not in manifest:
+        return True, "Registry has no prompts section — nothing to update."
 
-    if updated:
-        print("Synchronization completed successfully.")
-    else:
-        print("Everything is up to date. No action required.")
+    remote_hash = manifest["prompts"].get("hash")
+    if (remote_hash and os.path.exists(prompts_path)
+            and get_file_hash(prompts_path) == remote_hash):
+        return True, "Everything is up to date."
+
+    prompts_data = await _fetch_remote_json("prompts/prompts_v1.json")
+    if not prompts_data:
+        return False, "Could not download the system prompts."
+
+    os.makedirs(os.path.dirname(prompts_path), exist_ok=True)
+    with open(prompts_path, "w", encoding="utf-8") as f:
+        json.dump(prompts_data, f, indent=2, ensure_ascii=False)
+
+    return True, "System prompts updated."
 
 
 if __name__ == "__main__":

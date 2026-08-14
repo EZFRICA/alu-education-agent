@@ -1,6 +1,10 @@
 {
-  "version": "202607192033",
-  "generated_at": "2026-07-19T20:33:26.625901",
+  "version": "202608150023",
+  "generated_at": "2026-08-15T00:23:59.554827",
+  "embedding": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dim": 384
+  },
   "catalog": {
     "6eme": [
       "math",
@@ -21,9 +25,9 @@
       "version": "v1",
       "filename": "5eme_english_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/5eme_english_v1.parquet",
-      "hash": "sha256:becfc5c11cc34932db3599bc23058e6e96b3bdd99462a68bbd1d2f81dc243964",
-      "size_bytes": 98947,
-      "updated_at": "2026-07-19T20:33:26.624464"
+      "hash": "sha256:d9eb286c7103a57908f9456fb019584c216fc798d0b5dcf1979c6356ccbf01d3",
+      "size_bytes": 19862,
+      "updated_at": "2026-08-15T00:23:59.554594"
     },
     {
       "id": "5eme_history",
@@ -32,9 +36,9 @@
       "version": "v1",
       "filename": "5eme_history_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/5eme_history_v1.parquet",
-      "hash": "sha256:dadbfcd6c18ed451d8421721f2c2262ca1bdcb374cc3e4a91acab9f07e7d08f6",
-      "size_bytes": 102064,
-      "updated_at": "2026-07-19T20:33:26.624847"
+      "hash": "sha256:e9875ab5f440aa27e4f6b26e1bf5f89336c07dd0d385d0c852eccbc70b12589f",
+      "size_bytes": 22979,
+      "updated_at": "2026-08-15T00:23:59.554648"
     },
     {
       "id": "5eme_math",
@@ -43,9 +47,9 @@
       "version": "v1",
       "filename": "5eme_math_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/5eme_math_v1.parquet",
-      "hash": "sha256:66df690a0deb0db254913587d27a2c67d76ec1931e007e623e3dc05d598eec90",
-      "size_bytes": 101054,
-      "updated_at": "2026-07-19T20:33:26.625145"
+      "hash": "sha256:4228788bbf3bedd7fd44a697c6d02fb4136f50d649b5ffc923e66c59afa1d6a4",
+      "size_bytes": 21969,
+      "updated_at": "2026-08-15T00:23:59.554694"
     },
     {
       "id": "6eme_english",
@@ -54,9 +58,9 @@
       "version": "v1",
       "filename": "6eme_english_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/6eme_english_v1.parquet",
-      "hash": "sha256:e7f0ca07c50daf8047d27bc882e2c7b37bfbbccd83b53c9cbad3cae4eab70853",
-      "size_bytes": 38774,
-      "updated_at": "2026-07-19T20:33:26.625316"
+      "hash": "sha256:18e59c3099ba0dc9ba0898241604c44b01682bb38bc0c4ce20caf75f62b93e9c",
+      "size_bytes": 13080,
+      "updated_at": "2026-08-15T00:23:59.554731"
     },
     {
       "id": "6eme_history",
@@ -65,9 +69,9 @@
       "version": "v1",
       "filename": "6eme_history_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/6eme_history_v1.parquet",
-      "hash": "sha256:0f6adbc200952bbb84d0cf98b289c3d7a0fd94af7aa65fb01d75cc8c71b3a60a",
-      "size_bytes": 100696,
-      "updated_at": "2026-07-19T20:33:26.625579"
+      "hash": "sha256:faad31ebd691435d040426e964dd5476b54b5222d8ea55dc98a506d06bc48b6d",
+      "size_bytes": 21611,
+      "updated_at": "2026-08-15T00:23:59.554772"
     },
     {
       "id": "6eme_math",
@@ -76,9 +80,9 @@
       "version": "v1",
       "filename": "6eme_math_v1.parquet",
       "url": "https://storage.googleapis.com/akili-registry/courses/6eme_math_v1.parquet",
-      "hash": "sha256:4e49f297678582ac5df95ae1b71a305c461796cd152049acdfc54fab920c0a84",
-      "size_bytes": 100764,
-      "updated_at": "2026-07-19T20:33:26.625839"
+      "hash": "sha256:f712e6fdfaccff9739972a82f9298fbc64d99300e0ab9d8384e4e88f71f4bd51",
+      "size_bytes": 21695,
+      "updated_at": "2026-08-15T00:23:59.554813"
     }
   ],
   "prompts": {

@@ -4,6 +4,7 @@ Pure singleton module.
 """
 
 import time
+from collections import OrderedDict
 from typing import Optional
 from logger import get_logger
 
@@ -17,15 +18,35 @@ _TTL_BY_TYPE: dict[str, int] = {
 }
 _TTL_DEFAULT = 300
 
+# ── Capacity ──────────────────────────────────────────────────────────────────
+# TTL alone did not bound anything: expiry only ran inside get() for the id being
+# read, so a block written once and never read again was never reclaimed, and
+# _metrics grew on every distinct id ever queried -- including pure misses.
+# On a device with bounded RAM that is unbounded growth driven by how many
+# different blocks a conversation touches.
+MAX_ENTRIES = 256
+
 # ── Internal state (Global Singleton) ─────────────────────────────────────────
 # These variables stay in memory as long as the Streamlit process is alive.
+# OrderedDict: insertion/access order IS the LRU order.
 if "_cache" not in globals():
-    _cache: dict[str, tuple[str, float]] = {}
+    _cache: "OrderedDict[str, tuple[str, float]]" = OrderedDict()
 if "_metrics" not in globals():
-    _metrics: dict[str, dict] = {}
+    _metrics: "OrderedDict[str, dict]" = OrderedDict()
+
+def _evict_if_needed() -> None:
+    """Drop the least recently used entries until the cache fits."""
+    while len(_cache) > MAX_ENTRIES:
+        victim, _ = _cache.popitem(last=False)
+        logger.debug("L1 EVICT  — '%s' (capacity)", victim)
+
 
 def _ensure_metrics(block_id: str) -> None:
     if block_id not in _metrics:
+        # Bound here, not only in set(): a pure miss creates a metrics entry
+        # without ever caching anything, which is how _metrics outgrew _cache.
+        while len(_metrics) >= MAX_ENTRIES * 2:
+            _metrics.popitem(last=False)
         _metrics[block_id] = {
             "l1_hits": 0,
             "l1_misses": 0,
@@ -43,6 +64,7 @@ def get(block_id: str) -> Optional[str]:
     if entry is not None:
         content, expiry = entry
         if now < expiry:
+            _cache.move_to_end(block_id)          # most recently used
             _metrics[block_id]["l1_hits"] += 1
             _metrics[block_id]["last_hit_at"] = time.time()
             logger.debug("L1 HIT    — '%s'", block_id)
@@ -59,7 +81,9 @@ def get(block_id: str) -> Optional[str]:
 def set(block_id: str, content: str, block_type: Optional[str] = None) -> None:
     ttl = _TTL_BY_TYPE.get(block_type or "", _TTL_DEFAULT)
     _cache[block_id] = (content, time.monotonic() + ttl)
+    _cache.move_to_end(block_id)
     _ensure_metrics(block_id)
+    _evict_if_needed()
     _metrics[block_id]["write_backs"] += 1
     _metrics[block_id]["last_write_back_at"] = time.time()
     logger.debug("L1 SET    — '%s' (type=%s, TTL=%ds)", block_id, block_type or "?", ttl)
@@ -98,6 +122,23 @@ def get_summary() -> dict:
         "global_hit_rate": round(all_hits / total, 3) if total > 0 else 0.0,
         "cached_blocks":   sum(1 for _, (_, exp) in _cache.items() if now < exp),
     }
+
+def sweep() -> int:
+    """
+    Drop every expired entry. Returns how many were removed.
+
+    get() only ever expired the single id being read, so a block written and
+    never read again occupied RAM until flush_all(). Callable from the UI or a
+    background task.
+    """
+    now = time.monotonic()
+    stale = [k for k, (_, exp) in _cache.items() if now >= exp]
+    for k in stale:
+        del _cache[k]
+    if stale:
+        logger.debug("L1 SWEEP  — removed %d expired entries", len(stale))
+    return len(stale)
+
 
 def flush_all():
     """Wipes all cache and metrics from RAM."""
