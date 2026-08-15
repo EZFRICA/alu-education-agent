@@ -336,7 +336,7 @@ the suite never touches `app_local/storage/` or `app_local/memory/`.
 ## ⚠️ Known state
 
 This section reflects what the code does today, so that nothing here has to be
-taken on trust. See `REVIEW_FINDINGS.md` for the full audit.
+taken on trust.
 
 * **Course retrieval works.** Until recently `search_block_index` returned nothing
   on every call, so no curriculum ever reached the prompt. Fixed.

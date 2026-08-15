@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  # Every pull request, whatever its base branch. Listed explicitly rather than
+  # left bare so the intent is readable.
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+  # Feature branches too, so CI is already green before the PR is opened.
+  push:
+    branches:
+      - main
+      - 'fix/**'
+      - 'feat/**'
+
+  workflow_dispatch:
+
+# A new push supersedes the run in flight — the model fetch is slow enough that
+# stacked runs are worth cancelling.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      # pyproject requires >=3.13. Pinned here because .python-version is
+      # gitignored and therefore not available to the runner.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # --frozen: install exactly what uv.lock says. A CI that re-resolves is a
+      # CI that tests a different dependency set than the one committed — which
+      # is how a lancedb minor bump silently disabled the whole L3 tier here.
+      - name: Install dependencies
+        run: uv sync --frozen --dev
+
+      # The model id and dimension come from the single source of truth, so the
+      # cache key follows a model change automatically.
+      - name: Resolve embedding model
+        id: emb
+        run: |
+          echo "model=$(uv run python -c 'import embedding_config as c; print(c.EMBEDDING_MODEL)')" >> "$GITHUB_OUTPUT"
+          echo "dim=$(uv run python -c 'import embedding_config as c; print(c.EMBEDDING_DIM)')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache ONNX embedding model
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: onnx-${{ steps.emb.outputs.model }}-${{ steps.emb.outputs.dim }}
+
+      # ~240 MB, only on a cache miss. Without it the semantic tests skip, and a
+      # broken tokenizer or pooling config would sail through CI green.
+      - name: Fetch embedding model
+        run: uv run python scripts/fetch_embedding_model.py
+
+      # No API key and no network are set for this step on purpose: the suite is
+      # required to run fully offline, and conftest blocks INET sockets itself.
+      - name: Run tests
+        run: uv run pytest -ra
+
+      # A skip here means the model cache silently broke and the semantic
+      # guarantees stopped being checked. That must fail the build, not pass it.
+      - name: Assert the semantic tests actually ran
+        run: |
+          uv run pytest tests/test_local_embedder.py -q --no-header -ra > result.txt 2>&1 || true
+          cat result.txt
+          if grep -qiE "skipped|no tests ran" result.txt; then
+            echo "::error::Embedder tests were skipped — the ONNX model is missing, so tokenizer and pooling are unverified."
+            exit 1
+          fi
+
+  registry:
+    name: Registry config invariant
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --frozen --dev
+
+      # The client and the cloud pipeline must embed with the same model. They
+      # used to declare it separately, and the registry was published at 3072
+      # dimensions while the client queried at 384 — a mismatch that returns
+      # confidently ranked noise instead of an error.
+      - name: Client and pipeline agree on the embedding model
+        run: |
+          uv run python - <<'PY'
+          import embedding_config as shared
+          from app_local.config import settings as client
+          from cloud_registry.config import settings as pipeline
+
+          assert client.EMBEDDING_MODEL is shared.EMBEDDING_MODEL, "client drifted"
+          assert pipeline.EMBEDDING_MODEL is shared.EMBEDDING_MODEL, "pipeline drifted"
+          assert pipeline.EMBEDDING_DIM == shared.EMBEDDING_DIM, "dimension drifted"
+          print(f"OK — both sides on {shared.EMBEDDING_MODEL} @ {shared.EMBEDDING_DIM}d")
+          PY
