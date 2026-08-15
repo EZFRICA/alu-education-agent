@@ -32,14 +32,12 @@ def get_dll_lock(agent_id: str) -> asyncio.Lock:
     return _dll_locks[agent_id]
 
 # ── Adaptive certainty thresholds by block type (Education context) ───────────
-CERTAINTY_THRESHOLDS = {
-    "fondamental": 0.70,  # student_profile / learning_preferences — always relevant
-    "cours":       0.75,  # active_course — neutral threshold, subject-driven
-    "temp":        0.80,  # current_session — high threshold, most recent context
-}
+# Defined in settings because they are calibrated to the embedding model — see
+# the measurements there. Re-exported here so existing call sites keep working.
+CERTAINTY_THRESHOLDS = settings.CERTAINTY_THRESHOLDS
 
 # Minimum certainty for a block to be included in the working context
-MIN_RELEVANCE_CERTAINTY = 0.70
+MIN_RELEVANCE_CERTAINTY = settings.MIN_RELEVANCE_CERTAINTY
 
 
 async def init_dll() -> dict:
@@ -200,10 +198,24 @@ def get_head_threshold(dll: dict) -> float:
     return CERTAINTY_THRESHOLDS.get(head_node["type"], 0.55)
 
 
-async def search_memory(query_vector: List[float], class_level: str, subject: str) -> List[Dict]:
+async def search_memory(
+    query_vector: List[float],
+    class_level: str,
+    subject: str,
+    dll: Optional[dict] = None,
+) -> List[Dict]:
     """
     Bidirectional Metadata Jump (BMJ) — powered by LanceDB vector search.
     Replaces the Weaviate near_text with a local embedding search.
+
+    `dll` is the caller's DLL handle. When supplied, the BMJ promotion is applied
+    to *that* object, so a caller holding a DLL across the turn sees the routing
+    decision and any later save_dll of its own handle preserves it. When omitted
+    (standalone use), a private copy is loaded as before.
+
+    Without this, planner_node's handle and this function's private copy were two
+    different dicts, and the last writer — the memory write-back, holding the
+    pre-promotion copy — silently reverted every routing decision the turn made.
     """
     logger.debug("DLL Search | class='%s' subject='%s'", class_level, subject)
 
@@ -225,17 +237,35 @@ async def search_memory(query_vector: List[float], class_level: str, subject: st
     # Only applies to DLL nodes (student_profile, learning_preferences, etc.),
     # NOT to course content blocks returned from LanceDB (chapitre_X, etc.).
     if filtered:
-        dll = await load_dll()
-        dll_node_ids = set(dll.get("nodes", {}).keys())
+        # Mutate the caller's handle when there is one, so the turn holds a
+        # single DLL object and no later write can revert this promotion.
+        working_dll = dll if dll is not None else await load_dll()
+        dll_node_ids = set(working_dll.get("nodes", {}).keys())
         for block in filtered:
             block_id = block.get("block_id", "")
             if block_id in dll_node_ids:
-                dll = move_to_front(block_id, dll)
-                save_dll(dll)
+                record_access(block_id, working_dll)
+                move_to_front(block_id, working_dll)
+                save_dll(working_dll)
                 logger.debug("BMJ | Moved to HEAD: %s", block_id)
                 break  # Only promote the first matching DLL node
 
     return filtered
+
+
+def record_access(block_id: str, dll: dict) -> None:
+    """
+    Mark a block as accessed now.
+
+    `last_accessed` and `access_count` were written at creation and updated by
+    no code path, so "least recently accessed" eviction had nothing to sort on.
+    Called from every read path: the L1 cache, retrieval, and content updates.
+    """
+    node = dll.get("nodes", {}).get(block_id)
+    if node is None:
+        return
+    node["last_accessed"] = datetime.now().isoformat()
+    node["access_count"] = int(node.get("access_count") or 0) + 1
 
 
 def toggle_block(block_id: str, state: bool, dll: dict) -> dict:
@@ -264,10 +294,11 @@ async def update_node_content(block_id: str, content: str, dll: dict) -> dict:
     # 1. Invalidate L1 before write
     cache_l1.invalidate(block_id)
 
-    # 2. Persist to LanceDB (L3) — user_memory table
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
-    embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
-    vector = await embeddings_model.aembed_query(content)
+    # 2. Persist to LanceDB (L3) — user_memory table.
+    # get_embedder() is process-cached; this used to rebuild the client on every
+    # write-back, 1-3 times per turn (REVIEW_FINDINGS.md C6).
+    from llm_provider import get_embedder
+    vector = await get_embedder().aembed_query(content)
 
     await lance_driver.upsert_local_block(
         block_id=block_id,
@@ -284,13 +315,23 @@ async def update_node_content(block_id: str, content: str, dll: dict) -> dict:
     # 4. Update DLL JSON metadata
     node["content"] = content
     node["last_modified"] = datetime.now().isoformat()
+    record_access(block_id, dll)
     save_dll(dll)
 
     return dll
 
 
 def move_to_front(block_id: str, dll: dict) -> dict:
-    """Move the selected node to HEAD position (BMJ algorithm)."""
+    """
+    Move the selected node to HEAD position (BMJ algorithm).
+
+    An unknown id is a no-op, matching page_out_block. The two disagreed:
+    page_out_block returned silently while this raised KeyError, so the same
+    stale id produced different outcomes depending on which one saw it first.
+    """
+    if block_id not in dll.get("nodes", {}):
+        logger.debug("move_to_front: unknown block '%s' — ignoring", block_id)
+        return dll
     if dll["head_id"] == block_id:
         return dll
     nodes = dll["nodes"]

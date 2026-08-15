@@ -1,14 +1,21 @@
 [project]
 name = "alu-education-agent"
 version = "0.1.0"
-description = "ALU Education Agent — local-first AI tutor powered by Gemma 4 via Ollama"
+description = "ALU Education Agent — local-first AI tutor with on-device ONNX embeddings and a configurable LLM provider"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    # Local ONNX embeddings. Deliberately NOT sentence-transformers/torch:
+    # those are disqualifying on the deployment target (Raspberry Pi class).
+    "fastembed>=0.8.0,<0.9",
     "google-auth>=2.49.2",
     "google-cloud-storage>=3.4.1",
     "google-generativeai>=0.8.6",
-    "lancedb>=0.30.2",
+    # Pinned to the tested minor. list_tables() changed its return type within
+    # the 0.30 line (see REVIEW_FINDINGS.md S5-A); lance_driver.list_table_names
+    # raises loudly if the shape moves again, but the pin keeps an unattended
+    # `uv sync` from silently jumping the boundary.
+    "lancedb>=0.30.2,<0.31",
     "langchain>=1.2.12",
     "langchain-google-genai>=4.2.1",
     "langchain-ollama>=1.1.0",
@@ -25,5 +32,13 @@ dependencies = [
     "weaviate-client>=4.20.4",
 ]
 
-[tool.uv.workspace]
-members = ["travel-agent-dll"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

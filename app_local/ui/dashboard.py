@@ -239,9 +239,13 @@ with st.sidebar:
 
     if st.button("🔄 Check for Updates", use_container_width=True):
         with st.spinner("Checking registry..."):
-            asyncio.run(sync_with_registry())
+            try:
+                ok, msg = asyncio.run(sync_with_registry())
+            except Exception as e:
+                ok, msg = False, f"Sync failed: {e}"
             st.session_state.remote_catalog = {}  # Refresh catalog
-            st.rerun()
+        (st.success if ok else st.error)(msg)
+        st.rerun()
 
     if st.button("🗑️ Reset Memory", use_container_width=True, type="secondary"):
         with st.spinner("Wiping memory (L1 + L2)..."):
@@ -332,7 +336,7 @@ with col_mem:
     st.markdown('<div class="apu-panel"><div class="panel-header">💾 L3 Archive — LanceDB</div>', unsafe_allow_html=True)
     try:
         db = get_cached_db()
-        tables = [t for t in db.list_tables() if isinstance(t, str)]
+        tables = lance_driver.list_table_names(db)
         if tables:
             for table_name in tables:
                 count = db.open_table(table_name).to_pandas().shape[0]
@@ -363,9 +367,19 @@ with col_chat:
             st.write(f"Create entry: **{proposal.get('label', '?')}**?")
             c1, c2, _ = st.columns([1, 1, 3])
             if c1.button("✅ Confirm"):
-                asyncio.run(auto_execute_block_proposal(proposal))
+                # Honour the return value: the executor refuses malformed
+                # proposals and content it cannot embed, and this used to
+                # announce success regardless.
+                created = asyncio.run(auto_execute_block_proposal(proposal))
                 st.session_state.pending_block_proposal = None
-                st.success("Entry created!")
+                if created:
+                    st.success("Entry created!")
+                else:
+                    st.error(
+                        "Could not create that entry — it was incomplete or "
+                        "could not be indexed. Nothing was saved. See the log "
+                        "for details."
+                    )
                 st.rerun()
             if c2.button("❌ Decline"):
                 st.session_state.pending_block_proposal = None
@@ -396,6 +410,10 @@ with col_chat:
             for node_id, node in dll_fresh.get("nodes", {}).items():
                 if node.get("content"):
                     cache_l1.set(node_id, node["content"], block_type=node.get("type"))
+
+            # A memory write that failed must be visible, not just logged.
+            for _problem in result.get("memory_problems") or []:
+                st.warning(f"Memory not updated: {_problem}")
 
             if result.get("needs_new_block") == "True":
                 st.session_state.pending_block_proposal = result.get("proposed_block_config")

@@ -37,6 +37,7 @@ anyio==4.12.1
     #   py-key-value-aio
     #   sse-starlette
     #   starlette
+    #   streamlit
     #   watchfiles
 apscheduler==3.11.2
     # via letta
@@ -64,7 +65,6 @@ beartype==0.22.9
     # via py-key-value-aio
 beautifulsoup4==4.14.3
     # via
-    #   llama-index-readers-file
     #   markdownify
     #   markitdown
 black==26.3.1
@@ -78,9 +78,7 @@ brotli==1.2.0
 bytecode==0.17.0
     # via ddtrace
 cachetools==7.0.5
-    # via
-    #   py-key-value-aio
-    #   streamlit
+    # via py-key-value-aio
 caio==0.9.25
     # via aiofile
 certifi==2026.2.25
@@ -88,8 +86,8 @@ certifi==2026.2.25
     #   clickhouse-connect
     #   httpcore
     #   httpx
+    #   langchain-openai
     #   letta
-    #   llama-cloud
     #   requests
     #   sentry-sdk
     #   trafilatura
@@ -104,10 +102,10 @@ charset-normalizer==3.4.5
     #   pdfminer-six
     #   requests
     #   trafilatura
-click==8.3.1
+click==8.4.2
     # via
     #   black
-    #   llama-cloud-services
+    #   huggingface-hub
     #   magika
     #   nltk
     #   streamlit
@@ -150,23 +148,22 @@ ddtrace==4.5.4
 decorator==5.2.1
     # via ipython
 defusedxml==0.7.1
-    # via
-    #   llama-index-readers-file
-    #   markitdown
+    # via markitdown
 demjson3==3.0.6
     # via letta
 deprecated==1.2.18
     # via
     #   banks
     #   llama-index-core
-    #   llama-index-indices-managed-llama-cloud
     #   llama-index-instrumentation
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-semantic-conventions
 deprecation==2.1.0
-    # via weaviate-client
+    # via
+    #   lancedb
+    #   weaviate-client
 dirtyjson==1.0.8
     # via llama-index-core
 distro==1.9.0
@@ -200,8 +197,12 @@ faker==40.11.0
     # via letta
 fastapi==0.135.1
     # via sentry-sdk
+fastembed==0.8.0
+    # via alu-education-agent (pyproject.toml)
 fastmcp==3.1.0
     # via letta
+filelock==3.32.3
+    # via huggingface-hub
 filetype==1.2.0
     # via
     #   banks
@@ -216,38 +217,51 @@ frozenlist==1.8.0
     #   aiohttp
     #   aiosignal
 fsspec==2026.2.0
-    # via llama-index-core
+    # via
+    #   huggingface-hub
+    #   llama-index-core
 genson==1.3.0
     # via datamodel-code-generator
-gitdb==4.0.12
-    # via gitpython
-gitpython==3.1.46
-    # via streamlit
 google-ai-generativelanguage==0.6.15
     # via google-generativeai
 google-api-core==2.30.0
     # via
     #   google-ai-generativelanguage
     #   google-api-python-client
+    #   google-cloud-core
+    #   google-cloud-storage
     #   google-generativeai
 google-api-python-client==2.192.0
     # via google-generativeai
-google-auth==2.49.1
+google-auth==2.56.3
     # via
+    #   alu-education-agent (pyproject.toml)
     #   google-ai-generativelanguage
     #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
+    #   google-cloud-core
+    #   google-cloud-storage
     #   google-genai
     #   google-generativeai
 google-auth-httplib2==0.3.0
     # via google-api-python-client
+google-cloud-core==2.6.1
+    # via google-cloud-storage
+google-cloud-storage==3.13.1
+    # via alu-education-agent (pyproject.toml)
+google-crc32c==1.8.0
+    # via
+    #   google-cloud-storage
+    #   google-resumable-media
 google-genai==1.67.0
     # via
     #   langchain-google-genai
     #   letta
 google-generativeai==0.8.6
-    # via ux-driven-agent-memory (pyproject.toml)
+    # via alu-education-agent (pyproject.toml)
+google-resumable-media==2.10.1
+    # via google-cloud-storage
 googleapis-common-protos==1.73.0
     # via
     #   google-api-core
@@ -280,6 +294,8 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
+hf-xet==1.6.0
+    # via huggingface-hub
 html2text==2025.4.15
     # via letta
 htmldate==1.9.4
@@ -292,6 +308,8 @@ httplib2==0.31.2
     # via
     #   google-api-python-client
     #   google-auth-httplib2
+httptools==0.8.0
+    # via streamlit
 httpx==0.28.1
     # via
     #   anthropic
@@ -299,14 +317,16 @@ httpx==0.28.1
     #   exa-py
     #   fastmcp
     #   google-genai
+    #   huggingface-hub
+    #   langchain-core
     #   langgraph-sdk
     #   langsmith
     #   letta
     #   letta-client
-    #   llama-cloud
     #   llama-index-core
     #   mcp
     #   mistralai
+    #   ollama
     #   openai
     #   tavily-python
     #   weaviate-client
@@ -314,6 +334,10 @@ httpx-sse==0.4.3
     # via
     #   letta
     #   mcp
+huggingface-hub==1.27.0
+    # via
+    #   fastembed
+    #   tokenizers
 idna==3.11
     # via
     #   anyio
@@ -333,6 +357,8 @@ ipython-pygments-lexers==1.1.1
     # via ipython
 isort==8.0.1
     # via datamodel-code-generator
+itsdangerous==2.2.0
+    # via streamlit
 jaraco-classes==3.4.0
     # via keyring
 jaraco-context==6.1.1
@@ -373,20 +399,34 @@ keyring==25.7.0
     # via py-key-value-aio
 kiwisolver==1.5.0
     # via matplotlib
+lance-namespace==0.11.0
+    # via lancedb
+lance-namespace-urllib3-client==0.11.0
+    # via lance-namespace
+lancedb==0.30.2
+    # via alu-education-agent (pyproject.toml)
 langchain==1.2.12
-    # via ux-driven-agent-memory (pyproject.toml)
-langchain-core==1.2.19
+    # via alu-education-agent (pyproject.toml)
+langchain-core==1.5.5
     # via
     #   langchain
     #   langchain-google-genai
+    #   langchain-ollama
+    #   langchain-openai
     #   langgraph
     #   langgraph-checkpoint
     #   langgraph-prebuilt
 langchain-google-genai==4.2.1
-    # via ux-driven-agent-memory (pyproject.toml)
+    # via alu-education-agent (pyproject.toml)
+langchain-ollama==1.1.0
+    # via alu-education-agent (pyproject.toml)
+langchain-openai==1.5.1
+    # via alu-education-agent (pyproject.toml)
+langchain-protocol==0.0.18
+    # via langchain-core
 langgraph==1.1.2
     # via
-    #   ux-driven-agent-memory (pyproject.toml)
+    #   alu-education-agent (pyproject.toml)
     #   langchain
 langgraph-checkpoint==4.0.1
     # via
@@ -399,50 +439,28 @@ langgraph-sdk==0.3.11
 langsmith==0.7.17
     # via langchain-core
 letta==0.16.6
-    # via ux-driven-agent-memory (pyproject.toml)
+    # via alu-education-agent (pyproject.toml)
 letta-client==1.7.12
     # via letta
-llama-cloud==0.1.35
-    # via
-    #   llama-cloud-services
-    #   llama-index-indices-managed-llama-cloud
-llama-cloud-services==0.6.54
-    # via llama-parse
-llama-index==0.14.16
+llama-index==0.14.23
     # via letta
-llama-index-cli==0.5.5
-    # via llama-index
-llama-index-core==0.14.17
+llama-index-core==0.14.23
     # via
-    #   llama-cloud-services
     #   llama-index
-    #   llama-index-cli
     #   llama-index-embeddings-openai
-    #   llama-index-indices-managed-llama-cloud
     #   llama-index-llms-openai
-    #   llama-index-readers-file
-    #   llama-index-readers-llama-parse
-llama-index-embeddings-openai==0.5.2
+llama-index-embeddings-openai==0.6.0
     # via
     #   letta
     #   llama-index
-    #   llama-index-cli
-llama-index-indices-managed-llama-cloud==0.10.0
-    # via llama-index
 llama-index-instrumentation==0.5.0
     # via llama-index-workflows
-llama-index-llms-openai==0.6.26
-    # via
-    #   llama-index
-    #   llama-index-cli
-llama-index-readers-file==0.5.6
-    # via llama-index
-llama-index-readers-llama-parse==0.6.0
+llama-index-llms-openai==0.7.10
     # via llama-index
 llama-index-workflows==2.16.1
     # via llama-index-core
-llama-parse==0.6.54
-    # via llama-index-readers-llama-parse
+loguru==0.7.3
+    # via fastembed
 lxml==6.0.2
     # via
     #   htmldate
@@ -493,6 +511,8 @@ mdurl==0.1.2
     # via markdown-it-py
 mistralai==1.9.11
     # via letta
+mmh3==5.2.1
+    # via fastembed
 more-itertools==10.8.0
     # via
     #   inflect
@@ -524,6 +544,8 @@ nltk==3.9.3
 numpy==2.4.3
     # via
     #   contourpy
+    #   fastembed
+    #   lancedb
     #   letta
     #   llama-index-core
     #   magika
@@ -532,11 +554,16 @@ numpy==2.4.3
     #   pandas
     #   pydeck
     #   streamlit
+ollama==0.6.2
+    # via langchain-ollama
 onnxruntime==1.24.3
-    # via magika
-openai==2.28.0
+    # via
+    #   fastembed
+    #   magika
+openai==2.54.0
     # via
     #   exa-py
+    #   langchain-openai
     #   letta
     #   llama-index-embeddings-openai
     #   llama-index-llms-openai
@@ -603,6 +630,8 @@ packaging==26.0
     #   black
     #   deprecation
     #   fastmcp
+    #   huggingface-hub
+    #   lancedb
     #   langchain-core
     #   langsmith
     #   matplotlib
@@ -610,9 +639,9 @@ packaging==26.0
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-sqlalchemy
     #   streamlit
-pandas==2.3.3
+pandas==3.0.5
     # via
-    #   llama-index-readers-file
+    #   alu-education-agent (pyproject.toml)
     #   streamlit
 parso==0.8.6
     # via jedi
@@ -632,6 +661,7 @@ pexpect==4.9.0
     # via ipython
 pillow==12.1.1
     # via
+    #   fastembed
     #   llama-index-core
     #   matplotlib
     #   pdfplumber
@@ -642,7 +672,6 @@ platformdirs==4.9.4
     #   banks
     #   black
     #   fastmcp
-    #   llama-cloud-services
     #   llama-index-core
 prettytable==3.17.0
     # via letta
@@ -680,8 +709,13 @@ pure-eval==0.2.3
     # via stack-data
 py-key-value-aio==0.4.4
     # via fastmcp
-pyarrow==23.0.1
-    # via streamlit
+py-rust-stemmers==0.1.8
+    # via fastembed
+pyarrow==24.0.0
+    # via
+    #   alu-education-agent (pyproject.toml)
+    #   lancedb
+    #   streamlit
 pyasn1==0.6.2
     # via pyasn1-modules
 pyasn1-modules==0.4.2
@@ -698,6 +732,8 @@ pydantic==2.12.5
     #   fastmcp
     #   google-genai
     #   google-generativeai
+    #   lance-namespace-urllib3-client
+    #   lancedb
     #   langchain
     #   langchain-core
     #   langchain-google-genai
@@ -705,13 +741,12 @@ pydantic==2.12.5
     #   langsmith
     #   letta
     #   letta-client
-    #   llama-cloud
-    #   llama-cloud-services
     #   llama-index-core
     #   llama-index-instrumentation
     #   llama-index-workflows
     #   mcp
     #   mistralai
+    #   ollama
     #   openai
     #   openapi-pydantic
     #   pydantic-settings
@@ -738,8 +773,6 @@ pyparsing==3.3.2
     # via
     #   httplib2
     #   matplotlib
-pypdf==6.8.0
-    # via llama-index-readers-file
 pypdfium2==5.6.0
     # via pdfplumber
 pyperclip==1.11.0
@@ -750,15 +783,15 @@ python-dateutil==2.9.0.post0
     # via
     #   dateparser
     #   htmldate
+    #   lance-namespace-urllib3-client
     #   matplotlib
     #   mistralai
     #   pandas
 python-dotenv==1.2.2
     # via
-    #   ux-driven-agent-memory (pyproject.toml)
+    #   alu-education-agent (pyproject.toml)
     #   exa-py
     #   fastmcp
-    #   llama-cloud-services
     #   magika
     #   mcp
     #   pydantic-settings
@@ -766,6 +799,7 @@ python-multipart==0.0.22
     # via
     #   letta
     #   mcp
+    #   streamlit
 python-pptx==1.0.2
     # via markitdown
 pytokens==0.4.1
@@ -775,11 +809,11 @@ pytz==2026.1.post1
     #   clickhouse-connect
     #   dateparser
     #   letta
-    #   pandas
 pyyaml==6.0.3
     # via
     #   datamodel-code-generator
     #   fastmcp
+    #   huggingface-hub
     #   jsonschema-path
     #   langchain-core
     #   letta
@@ -803,8 +837,10 @@ requests==2.32.5
     # via
     #   datadog
     #   exa-py
+    #   fastembed
     #   google-api-core
     #   google-auth
+    #   google-cloud-storage
     #   google-genai
     #   langsmith
     #   llama-index-core
@@ -844,8 +880,6 @@ six==1.17.0
     # via
     #   markdownify
     #   python-dateutil
-smmap==5.0.3
-    # via gitdb
 sniffio==1.3.1
     # via
     #   anthropic
@@ -878,12 +912,13 @@ starlette==0.52.1
     #   fastapi
     #   mcp
     #   sse-starlette
-streamlit==1.55.0
-    # via streamlit-chat
+    #   streamlit
+streamlit==1.61.1
+    # via
+    #   alu-education-agent (pyproject.toml)
+    #   streamlit-chat
 streamlit-chat==0.1.1
-    # via ux-driven-agent-memory (pyproject.toml)
-striprtf==0.0.26
-    # via llama-index-readers-file
+    # via alu-education-agent (pyproject.toml)
 structlog==25.5.0
     # via letta
 sympy==1.14.0
@@ -896,11 +931,11 @@ tenacity==9.1.4
     # via
     #   google-genai
     #   langchain-core
-    #   llama-cloud-services
     #   llama-index-core
     #   streamlit
 tiktoken==0.12.0
     # via
+    #   langchain-openai
     #   llama-index-core
     #   tavily-python
 tinytag==2.2.0
@@ -909,13 +944,16 @@ tld==0.13.2
     # via courlan
 tokenize-rt==6.2.0
     # via black
+tokenizers==0.23.1
+    # via fastembed
 toml==0.10.2
-    # via streamlit
-tornado==6.5.5
     # via streamlit
 tqdm==4.67.3
     # via
+    #   fastembed
     #   google-generativeai
+    #   huggingface-hub
+    #   lancedb
     #   letta
     #   llama-index-core
     #   nltk
@@ -947,7 +985,10 @@ typing-extensions==4.15.0
     #   google-genai
     #   google-generativeai
     #   grpcio
+    #   huggingface-hub
+    #   lance-namespace-urllib3-client
     #   langchain-core
+    #   langchain-protocol
     #   letta-client
     #   llama-index-core
     #   llama-index-workflows
@@ -976,8 +1017,6 @@ typing-inspection==0.4.2
     #   mistralai
     #   pydantic
     #   pydantic-settings
-tzdata==2025.3
-    # via pandas
 tzlocal==5.3.1
     # via
     #   apscheduler
@@ -991,6 +1030,7 @@ urllib3==2.6.3
     #   clickhouse-connect
     #   courlan
     #   htmldate
+    #   lance-namespace-urllib3-client
     #   requests
     #   sentry-sdk
     #   trafilatura
@@ -1000,10 +1040,14 @@ uuid-utils==0.14.1
     #   langsmith
 uvicorn==0.41.0
     # via
+    #   alu-education-agent (pyproject.toml)
     #   fastmcp
     #   mcp
+    #   streamlit
 validators==0.35.0
     # via weaviate-client
+watchdog==6.0.0
+    # via alu-education-agent (pyproject.toml)
 watchfiles==1.1.1
     # via fastmcp
 wcwidth==0.6.0
@@ -1011,11 +1055,12 @@ wcwidth==0.6.0
     #   prettytable
     #   prompt-toolkit
 weaviate-client==4.20.4
-    # via ux-driven-agent-memory (pyproject.toml)
+    # via alu-education-agent (pyproject.toml)
 websockets==16.0
     # via
     #   fastmcp
     #   google-genai
+    #   streamlit
 wrapt==1.17.3
     # via
     #   ddtrace
