@@ -1,7 +1,7 @@
 """
 DLL Manager — LanceDB-backed version (Local Edition).
 Implements the Bidirectional Metadata Jump (BMJ) algorithm for memory routing.
-Uses LanceDB for vector search instead of Weaviate.
+Uses LanceDB for local vector search.
 DLL structure (prev/next pointers) stored in metadata_links.json.
 """
 
@@ -206,7 +206,6 @@ async def search_memory(
 ) -> List[Dict]:
     """
     Bidirectional Metadata Jump (BMJ) — powered by LanceDB vector search.
-    Replaces the Weaviate near_text with a local embedding search.
 
     `dll` is the caller's DLL handle. When supplied, the BMJ promotion is applied
     to *that* object, so a caller holding a DLL across the turn sees the routing

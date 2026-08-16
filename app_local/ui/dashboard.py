@@ -22,7 +22,7 @@ def extract_text(content) -> str:
         return " ".join(block.get("text", "") for block in content if isinstance(block, dict))
     return str(content)
 
-from app_local.runtime.agent import create_agent_graph
+from app_local.runtime.agent import build_message_window, create_agent_graph
 from app_local.storage import lance_driver
 from app_local.mmu import cache_l1
 from app_local.sync.sync_manager import (
@@ -235,6 +235,22 @@ with st.sidebar:
                 st.rerun()
 
     st.divider()
+    st.markdown("### 🧠 Conversation Memory")
+
+    history_turns = st.slider(
+        "Exchanges sent to the model", 0, 10, 3,
+        help="0 = memory-only: the tutor still sees the L1/L2 blocks (topic, "
+             "profile, preferences) but no transcript. Each exchange adds two "
+             "messages to the prompt, so raise this only as far as the model "
+             "behind LLM_PROVIDER can afford.",
+    )
+    if history_turns == 0:
+        st.caption("🧩 Memory-only — continuity comes from L1/L2 blocks alone.")
+    else:
+        st.caption(f"💬 Last {history_turns} exchange(s) "
+                   f"→ {history_turns * 2} extra messages in the prompt.")
+
+    st.divider()
     st.markdown("### ⚙️ Controls")
 
     if st.button("🔄 Check for Updates", use_container_width=True):
@@ -390,12 +406,15 @@ with col_chat:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         graph = create_agent_graph()
+        # Everything before this turn; the prompt itself is appended by
+        # build_message_window.
+        prior_history = st.session_state.messages[:-1]
         state = {
-            "messages": [HumanMessage(content=prompt)],
+            "messages": build_message_window(prior_history, prompt, history_turns),
             "agent_id": dll_state.get("agent_id"),
             "class_level": curr_sel["class"],
             "subject": curr_sel["subject"],
-            "memory_only_mode": False,
+            "memory_only_mode": history_turns == 0,
             "needs_new_block": "False",
             "proposed_block_config": {}
         }

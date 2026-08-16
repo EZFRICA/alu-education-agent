@@ -72,3 +72,7 @@ models/
 app_local/storage/local_manifest.json
 app_local/storage/embedding_stamp.json
 app_local/memory/metadata_links.json
+
+# Snapshots taken by scripts/migrate_embeddings.py before it rewrites vectors.
+# One per migration, each a full copy of the tables above.
+app_local/storage/akili_db.backup-*/

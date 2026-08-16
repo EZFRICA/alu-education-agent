@@ -29,7 +29,6 @@ dependencies = [
     "streamlit-chat>=0.1.1",
     "uvicorn>=0.41.0",
     "watchdog>=6.0.0",
-    "weaviate-client>=4.20.4",
 ]
 
 

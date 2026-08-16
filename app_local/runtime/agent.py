@@ -3,7 +3,7 @@ import json
 from typing import Annotated, TypedDict, List
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 # Path alignment
 import sys
@@ -87,6 +87,32 @@ class AgentState(TypedDict):
 # A tutor needs a couple of lookups, not an agent loop. Bounded because this
 # runs unattended on hardware a student cannot debug.
 MAX_TOOL_ITERATIONS = 4
+
+
+def build_message_window(history, prompt, exchanges: int) -> List[BaseMessage]:
+    """
+    The transcript sent to the model, trimmed to the last `exchanges` turns.
+
+    `history` is the UI's own log: dicts of {"role", "content"}, oldest first,
+    NOT including the prompt being asked now.
+
+    Why this is a setting and not a constant: the transcript is the one part of
+    the prompt that grows without bound, and what a device can afford depends on
+    the model behind it. A 2B model on a Raspberry Pi has a small context window;
+    a 26B model on a school hub does not. `exchanges=0` is memory-only — the
+    tutor still sees the L1/L2 blocks, which is what carries continuity of topic
+    and profile, just not the literal transcript.
+    """
+    window: List[BaseMessage] = []
+    if exchanges > 0:
+        for entry in history[-(exchanges * 2):]:
+            content = entry.get("content", "")
+            if entry.get("role") == "user":
+                window.append(HumanMessage(content=content))
+            else:
+                window.append(AIMessage(content=content))
+    window.append(HumanMessage(content=prompt))
+    return window
 
 # --- Memory Write-Back (Local Edition) ---
 async def _update_student_memory(

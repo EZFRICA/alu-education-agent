@@ -34,7 +34,6 @@ def configure_root_logger():
 
     # Reduce noise from external libraries
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("weaviate").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("letta_client").setLevel(logging.WARNING)
