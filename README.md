@@ -5,18 +5,78 @@
 (L1–L3) and a Socratic tutoring engine, so that students learn through guided
 discovery rather than just receiving answers.
 
-The deployment target is constrained hardware — refurbished laptops, mini-PCs,
-Raspberry Pi class — with intermittent or absent connectivity. Bounded RAM,
+The deployment target is constrained hardware such as refurbished laptops, mini-PCs,
+Raspberry Pi class with intermittent or absent connectivity. Bounded RAM,
 bounded storage growth and no unnecessary network round trip on the read path are
 product requirements, not preferences.
 
 **Designing for the floor, not the ceiling.** Everything here is built to run
 where resources are scarce. A system that holds up under those conditions also
-holds up with more headroom — the reverse is not true, which is why the
+holds up with more headroom, the reverse is not true, which is why the
 constraint is the starting point rather than an afterthought. That is also why
-`llm_provider.py` ships several LLM connectors and the embedder is swappable:
-the same codebase should serve a classroom Raspberry Pi and a well-provisioned
+`llm_provider.py` ships several LLM connectors and the embedder is swappable: the
+same codebase should serve a classroom Raspberry Pi and a well-provisioned
 server, differing only by configuration.
+
+---
+
+## 🖥️ The APU Control Center
+
+![Akili APU Control Center with L1 cache, L2 DLL and the tutoring interface side by side](alu-education-agent-1.png)
+
+The dashboard is not a demo skin: it is the memory hierarchy, visible while it
+works. On the left, **L1** shows which blocks are hot in RAM and their hit rate.
+Below it, **L2** shows the DLL chain with each block's type, such as `TEMP`,
+`COURS`, `FONDAMENTAL`, which is what drives its TTL and its recall threshold.
+On the right, the tutor.
+
+---
+
+## 💬 A real session
+
+Grace, first time opening the app. Nothing has been typed about her before.
+
+> **Grace** — Hello, my name is Grace. What can you teach me?
+>
+> **Akili** — Hi Grace! It's wonderful to meet you. I'm Akili, and I'm here to
+> help you master your 6eme math!
+>
+> Since we are currently working on **fractions**, we can explore what a fraction
+> actually represents, how to compare different fractions, or how to use them in
+> real-life situations.
+>
+> To get us started, how do you feel about fractions so far?
+
+Akili was never told the topic. *"Currently working on fractions"* comes from the
+`current_session` block in L2; the name comes from `student_profile`. That is the
+memory hierarchy feeding the prompt.
+
+> **Grace** — I don't know anything about fractions, it is my first time to learn
+>
+> **Akili** — Don't worry at all — everyone starts from the very beginning.
+>
+> Think of a fraction as just a way to talk about parts of a whole. Imagine you
+> have a pizza. If you cut that pizza into 4 equal slices, and you take 1 slice,
+> you have taken a "fraction" of the pizza.
+>
+> Before we look at the actual numbers, does the idea of "parts of a whole" make
+> sense to you?
+
+The pizza is not the model improvising. `chapter_1_simple_fractions.md` reads:
+*"Imagine a pizza cut into 4 equal slices. If you eat 1 slice, you have eaten 1/4
+of the pizza."* That chapter was retrieved from L3 and injected into the prompt —
+this is the RAG path, visible in the wording.
+
+> **Grace** — oh yes, it makes sense for me
+>
+> **Akili** — To make sure we've really got the hang of it, let's try a quick
+> challenge. Imagine a chocolate bar divided into 8 equal pieces. If you give 3
+> pieces to a friend, how would you write that as a fraction?
+
+The chocolate bar is *not* in the course. The model kept the pedagogical shape of
+the chapter and built a new exercise from it — grounded without reciting. And it
+asks rather than answers: the Socratic constraint, which held for every turn of
+this session.
 
 ---
 
@@ -341,7 +401,7 @@ taken on trust.
 * **Course retrieval works.** Until recently `search_block_index` returned nothing
   on every call, so no curriculum ever reached the prompt. Fixed.
 * **The registry must be republished.** Parquet files uploaded before this
-  migration were embedded at 3072 dimensions with `models/gemini-embedding-2`.
+  migration were embedded at 3072 dimensions by a remote embedder.
   Regenerate with `batch_pipeline.py --upload`, and re-fetch any course already
   downloaded to a device. A device that skips this gets a readable refusal, not
   bad answers — but it gets no course retrieval until it does.

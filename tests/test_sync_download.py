@@ -76,11 +76,11 @@ async def test_a_registry_built_with_another_model_is_refused_before_download(
 ):
     """R2: the manifest carries the stamp, so refuse now, not at first question."""
     _stub_download(monkeypatch, akili_paths,
-                   _manifest(model="models/gemini-embedding-2", dim=3072))
+                   _manifest(model="legacy/remote-embedder", dim=3072))
 
     ok, msg = await sync_manager.download_course("6eme", "math")
     assert ok is False
-    assert "models/gemini-embedding-2" in msg
+    assert "legacy/remote-embedder" in msg
     assert "3072" in msg
     assert "test/stub-embedder" in msg
     assert "edu_registry" not in lance_driver.list_table_names()

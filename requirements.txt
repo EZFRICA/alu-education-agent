@@ -54,9 +54,7 @@ attrs==25.4.0
     #   jsonschema
     #   referencing
 authlib==1.6.9
-    # via
-    #   fastmcp
-    #   weaviate-client
+    # via fastmcp
 babel==2.18.0
     # via courlan
 banks==2.4.1
@@ -161,9 +159,7 @@ deprecated==1.2.18
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-semantic-conventions
 deprecation==2.1.0
-    # via
-    #   lancedb
-    #   weaviate-client
+    # via lancedb
 dirtyjson==1.0.8
     # via llama-index-core
 distro==1.9.0
@@ -285,7 +281,6 @@ grpcio==1.78.0
     #   grpcio-tools
     #   letta
     #   opentelemetry-exporter-otlp-proto-grpc
-    #   weaviate-client
 grpcio-status==1.71.2
     # via google-api-core
 grpcio-tools==1.71.2
@@ -329,7 +324,6 @@ httpx==0.28.1
     #   ollama
     #   openai
     #   tavily-python
-    #   weaviate-client
 httpx-sse==0.4.3
     # via
     #   letta
@@ -700,7 +694,6 @@ protobuf==5.29.6
     #   proto-plus
     #   streamlit
     #   temporalio
-    #   weaviate-client
 psutil==7.2.2
     # via letta
 ptyprocess==0.7.0
@@ -751,7 +744,6 @@ pydantic==2.12.5
     #   openapi-pydantic
     #   pydantic-settings
     #   sqlmodel
-    #   weaviate-client
 pydantic-core==2.41.5
     # via pydantic
 pydantic-settings==2.13.1
@@ -1044,8 +1036,6 @@ uvicorn==0.41.0
     #   fastmcp
     #   mcp
     #   streamlit
-validators==0.35.0
-    # via weaviate-client
 watchdog==6.0.0
     # via alu-education-agent (pyproject.toml)
 watchfiles==1.1.1
@@ -1054,8 +1044,6 @@ wcwidth==0.6.0
     # via
     #   prettytable
     #   prompt-toolkit
-weaviate-client==4.20.4
-    # via alu-education-agent (pyproject.toml)
 websockets==16.0
     # via
     #   fastmcp

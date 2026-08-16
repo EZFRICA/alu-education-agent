@@ -232,3 +232,77 @@ async def test_the_embedding_no_longer_depends_on_the_llm_provider(
 
         assert main.calls == 1, f"turn failed with LLM_PROVIDER={provider}"
         assert out["messages"][0].content == "ok"
+
+
+# ── the conversation window (dashboard setting) ──────────────────────────────
+
+def _log(n):
+    """The UI's own transcript: n exchanges, oldest first."""
+    out = []
+    for i in range(1, n + 1):
+        out.append({"role": "user", "content": f"q{i}"})
+        out.append({"role": "assistant", "content": f"a{i}"})
+    return out
+
+
+def test_zero_exchanges_is_memory_only():
+    """
+    The old behaviour, now a deliberate setting rather than an accident: the
+    tutor sees the L1/L2 blocks but no transcript.
+    """
+    from app_local.runtime.agent import build_message_window
+
+    window = build_message_window(_log(3), "now", 0)
+    assert [m.content for m in window] == ["now"]
+
+
+def test_the_window_keeps_the_most_recent_exchanges():
+    from app_local.runtime.agent import build_message_window
+
+    window = build_message_window(_log(5), "now", 2)
+    assert [m.content for m in window] == ["q4", "a4", "q5", "a5", "now"]
+
+
+def test_roles_survive_the_round_trip():
+    """
+    The UI stores plain dicts; the model needs typed messages. Getting this
+    wrong makes the assistant's own turns look like the student's.
+    """
+    from langchain_core.messages import AIMessage
+    from app_local.runtime.agent import build_message_window
+
+    window = build_message_window(_log(1), "now", 1)
+    assert isinstance(window[0], HumanMessage)
+    assert isinstance(window[1], AIMessage)
+    assert isinstance(window[2], HumanMessage)
+
+
+def test_asking_for_more_history_than_exists_is_safe():
+    from app_local.runtime.agent import build_message_window
+
+    window = build_message_window(_log(2), "now", 10)
+    assert [m.content for m in window] == ["q1", "a1", "q2", "a2", "now"]
+    assert build_message_window([], "first question", 5)[0].content == "first question"
+
+
+async def test_the_window_reaches_the_model(
+    akili_paths, no_network, stub_embeddings, monkeypatch
+):
+    """
+    End to end: what build_message_window returns is what the model is sent,
+    after the system prompt. This is the defect the dashboard had — history
+    existed in the UI and never left it.
+    """
+    import app_local.runtime.agent as agent
+    from app_local.runtime.agent import build_message_window
+
+    main = _RecordingLLM("ok")
+    monkeypatch.setattr(agent, "_llm", main)
+    monkeypatch.setattr(agent, "_extractor_llm", _RecordingLLM("{}"))
+
+    state = _state()
+    state["messages"] = build_message_window(_log(2), "and now?", 2)
+    await agent.planner_node(state)
+
+    sent = [m.content for m in main.seen[1:]]        # [0] is the system prompt
+    assert sent == ["q1", "a1", "q2", "a2", "and now?"]
