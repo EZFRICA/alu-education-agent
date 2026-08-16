@@ -22,7 +22,10 @@ server, differing only by configuration.
 
 ## 🖥️ The APU Control Center
 
-![Akili APU Control Center with L1 cache, L2 DLL and the tutoring interface side by side](alu-education-agent-1.png)
+![Akili APU Control Center with L1 cache, L2 DLL and the tutoring interface side by side](images/alu-education-agent.png)
+
+> Four more screenshots walk through a full tutoring session, memory panel
+> included: [images/](images/).
 
 The dashboard is not a demo skin: it is the memory hierarchy, visible while it
 works. On the left, **L1** shows which blocks are hot in RAM and their hit rate.
@@ -33,51 +36,68 @@ On the right, the tutor.
 ---
 
 ## 💬 A real session
+Later in the same session, with the conversation window set to 4 exchanges in the
+sidebar:
 
-Grace, first time opening the app. Nothing has been typed about her before.
-
-> **Grace** — Hello, my name is Grace. What can you teach me?
+> **Grace**: What is 3/8 + 1/4? Just give me the number.
 >
-> **Akili** — Hi Grace! It's wonderful to meet you. I'm Akili, and I'm here to
-> help you master your 6eme math!
+> **Akili**: I'd love to, but I don't want to cheat you out of the "aha!"
+> moment! 💡 If I just give you the number, you won't be able to crush these
+> problems on your own during a test.
 >
-> Since we are currently working on **fractions**, we can explore what a fraction
-> actually represents, how to compare different fractions, or how to use them in
-> real-life situations.
+> To add these, the bottom numbers (the denominators) need to be the same.
 >
-> To get us started, how do you feel about fractions so far?
+> Since the first fraction has an 8 on the bottom, can you turn the 1/4 into a
+> fraction that also has an 8 on the bottom?
 
-Akili was never told the topic. *"Currently working on fractions"* comes from the
-`current_session` block in L2; the name comes from `student_profile`. That is the
-memory hierarchy feeding the prompt.
+An explicit request for the answer, declined with the reason given rather than
+a flat refusal, and a hint that moves the student one step forward.
 
-> **Grace** — I don't know anything about fractions, it is my first time to learn
+> **Grace**: 2/8
 >
-> **Akili** — Don't worry at all — everyone starts from the very beginning.
+> **Akili**: Spot on! 1/4 is the same as 2/8. Now that both fractions have the
+> same denominator, you can add them together. What is 3/8 + 2/8?
 >
-> Think of a fraction as just a way to talk about parts of a whole. Imagine you
-> have a pizza. If you cut that pizza into 4 equal slices, and you take 1 slice,
-> you have taken a "fraction" of the pizza.
+> **Grace**: 5/8
 >
-> Before we look at the actual numbers, does the idea of "parts of a whole" make
-> sense to you?
+> **Akili**: Boom! 🏀 You got it! Ready to level up? Let's try a subtraction
+> problem using the same skill: 7/10 − 2/5 = ?
 
-The pizza is not the model improvising. `chapter_1_simple_fractions.md` reads:
-*"Imagine a pizza cut into 4 equal slices. If you eat 1 slice, you have eaten 1/4
-of the pizza."* That chapter was retrieved from L3 and injected into the prompt —
-this is the RAG path, visible in the wording.
+Three exercises in, a difficulty ladder has appeared: addition, then subtraction
+*"using the same skill"*, then the one below, which introduces simplifying and
+says so before asking. None of that is possible without the transcript reaching
+the model, *"same skill"* and *"level up"* only mean something against what came
+before. The sidebar controls how many exchanges are sent; `0` sends none and the
+tutor runs on L1/L2 memory alone.
 
-> **Grace** — oh yes, it makes sense for me
+> **Akili**: Let's try one that might require a little extra step at the end
+> (simplifying the fraction). 5/6 − 1/3 = ?
 >
-> **Akili** — To make sure we've really got the hang of it, let's try a quick
-> challenge. Imagine a chocolate bar divided into 8 equal pieces. If you give 3
-> pieces to a friend, how would you write that as a fraction?
+> **Grace**: 2/3
+>
+> **Akili**: Not quite! Let's take it one step at a time. Remember our first
+> step: we need the denominators to be the same. If we want to change the
+> denominator of 1/3 to a 6, what do we need to multiply the bottom by? And what
+> must we do to the top?
+>
+> **Grace**: sorry, it is 1/2
+>
+> **Akili**: No need to be sorry! That's exactly how learning works, making a
+> mistake and then catching it is a huge part of the process. 🚀
+>
+> You're absolutely right: 5/6 − 2/6 = 3/6, which simplifies to 1/2.
+>
+> You've got the hang of finding common denominators and simplifying. Do you feel
+> confident enough to try one where the denominators are a bit larger, or would
+> you like to practice another one like this first?
 
-The chocolate bar is *not* in the course. The model kept the pedagogical shape of
-the chapter and built a new exercise from it — grounded without reciting. And it
-asks rather than answers: the Socratic constraint, which held for every turn of
-this session.
+`2/3` is a specific mistake, not a random one: it is `4/6` simplified, Grace
+subtracted the numerators while treating 1/3 as if it were already sixths, then
+correctly applied the simplification step she had just been taught. The redirect
+targets exactly the step she skipped, and still does not reveal the answer.
 
+The last line is the one worth reading twice. Having set the difficulty itself
+for three exercises, the tutor hands that choice to the student.
 ---
 
 ## 🗺️ APU System Architecture
@@ -132,7 +152,7 @@ graph TD
 ```
 
 > The sync manager writes the `edu_registry` table (L3), `local_manifest.json` and
-> `prompts.json`. It does not write the DLL (L2) — there is no `Sync --> L2` edge.
+> `prompts.json`. It does not write the DLL (L2) so there is no `Sync --> L2` edge.
 
 ---
 
@@ -140,7 +160,7 @@ graph TD
 
 ### 1. Tiered memory hierarchy
 
-**DLL** here means **doubly linked list** — the ordered chain of memory blocks the
+**DLL** here means **doubly linked list**, the ordered chain of memory blocks the
 BMJ routing algorithm reorders. (Earlier revisions of this document expanded it as
 "Dynamic Learning Layer"; the code has always meant the data structure.)
 
@@ -151,7 +171,7 @@ BMJ routing algorithm reorders. (Earlier revisions of this document expanded it 
 *   **L3 Archive (LanceDB)**: local vector store for course material and archived
     session memory. Queried on every turn without a network round trip.
 
-### 2. Local embeddings — no network on the read path
+### 2. Local embeddings, no network on the read path
 
 Query and document vectors are produced on-device by
 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions,
@@ -160,29 +180,30 @@ no `sentence-transformers` dependency: both are disqualifying on the target
 hardware.
 
 Measured on the development machine: **~2.4 ms per query embedding** (1.6 ms
-batched), against hundreds of milliseconds for a remote embedding call — and it
+batched), against hundreds of milliseconds for a remote embedding call and it
 works with no connectivity at all.
 
 ### 3. Socratic tutoring engine
 
 **Inference is the only pluggable component, and the only one that may need the
-network.** Everything else — embeddings, retrieval, L1/L2/L3 memory — is local,
-always. Swap the LLM backend and nothing else in the system changes:
+network.** Everything else, embeddings, retrieval, L1/L2/L3 memory, is local, always.
+
+Swap the LLM backend and nothing else in the system changes:
 
 | `LLM_PROVIDER` | Model | Where inference runs | Whole system offline? |
 |---|---|---|---|
-| `ollama` (local host) | e.g. `gemma:2b` | on the device | **yes — 100% offline** |
-| `ollama` (remote host) | e.g. `gemma:2b` | a machine you run | no — LLM only |
-| `gemma` | `gemma-4-26b-a4b-it` (Google AI Studio) | third-party API | no — LLM only |
-| `gemini` | `gemini-flash-lite-latest` | third-party API | no — LLM only |
-| `openrouter` | configurable | third-party API | no — LLM only |
+| `ollama` (local host) | e.g. `gemma:2b` | on the device | **yes, 100% offline** |
+| `ollama` (remote host) | e.g. `gemma:2b` | a machine you run | no, LLM only |
+| `gemma` | `gemma-4-26b-a4b-it` (Google AI Studio) | third-party API | no, LLM only |
+| `gemini` | `gemini-flash-lite-latest` | third-party API | no, LLM only |
+| `openrouter` | configurable | third-party API | no, LLM only |
 
 `gemma-4-26b-a4b-it` via Google AI Studio is the model this project is developed
 and demonstrated against.
 
 That is the design claim worth understanding: reaching a fully offline
 deployment is a matter of pointing `LLM_PROVIDER` at a locally hosted model, not
-of rewriting anything. Note that `ollama` does **not** imply local — pointing
+of rewriting anything. Note that `ollama` does **not** imply local; pointing
 `OLLAMA_BASE_URL` at another machine is a common setup when the device is too
 small to host a model, and is what the project is developed against.
 
@@ -207,7 +228,7 @@ the default because the target is constrained hardware. A deployment with more
 headroom can configure a stronger multilingual embedder, at the cost of a larger
 on-disk footprint, higher per-embedding latency, and a wider vector.
 
-It is configured in **`embedding_config.py` at the repo root** — one module read
+It is configured in **`embedding_config.py` at the repo root**, one module read
 by both the client and the cloud pipeline. That single source is the whole point:
 when the pipeline had its own hardcoded model id, setting `EMBEDDING_PROVIDER`
 changed the client and left the registry being published in a different vector
@@ -219,21 +240,21 @@ Overridable by environment:
 |---|---|---|
 | `EMBEDDING_PROVIDER` | `local` | `local` (ONNX, offline) or `google` (remote) |
 | `EMBEDDING_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | model id |
-| `EMBEDDING_DIM` | `384` | vector width — must match the model |
+| `EMBEDDING_DIM` | `384` | vector width, must match the model |
 | `EMBEDDING_CACHE_DIR` | `./models` | where the ONNX files live on device |
 
 > **Changing any of these requires regenerating the cloud registry and re-running
 > the local migration on every device.** Query vectors and document vectors must
-> come from the same model — a mismatch does not fail on its own, it returns
+> come from the same model, a mismatch does not fail on its own, it returns
 > noise ranked as though it were relevant.
 
 Two steps, in this order:
 
 ```bash
-# 1. cloud side — republish the registry in the new vector space
+# 1. cloud side, republish the registry in the new vector space
 uv run python cloud_registry/pipeline/batch_pipeline.py --upload
 
-# 2. every device — re-embed local memory from its stored content, offline
+# 2. every device, re-embed local memory from its stored content, offline
 uv run python scripts/migrate_embeddings.py --apply
 ```
 
@@ -270,7 +291,7 @@ harder case of two different models that happen to share a width.
   ├── storage/      # Local Database (LanceDB)
   └── ui/           # Streamlit Dashboard
 /scripts            # One-off operational tooling (see below)
-/tests              # pytest suite — runs offline, with no API key
+/tests              # pytest suite, runs offline, with no API key
 /models             # Bundled ONNX embedding model (not in git)
 ```
 
@@ -284,7 +305,7 @@ harder case of two different models that happen to share a width.
 uv sync
 ```
 
-### 2. Fetch the embedding model — on a connected machine
+### 2. Fetch the embedding model on a connected machine
 
 The agent never downloads the model at runtime: on a machine with no connectivity
 that would hang at the first student question instead of failing. Populate the
@@ -300,11 +321,11 @@ than hanging.
 
 ### 3. Configure environment
 
-Embeddings and retrieval are local and need no configuration — the defaults in
+Embeddings and retrieval are local and need no configuration, the defaults in
 `app_local/config/settings.py` are already correct. The only thing you actually
 choose is **where inference runs**.
 
-**Option A — fully offline.** Requires a device that can host the model:
+**Option A, fully offline.** Requires a device that can host the model:
 
 ```env
 LLM_PROVIDER=ollama
@@ -316,7 +337,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 ollama pull gemma:2b
 ```
 
-**Option B — Ollama on another machine.** Same engine, hosted elsewhere, for
+**Option B, Ollama on another machine.** Same engine, hosted elsewhere, for
 devices too small to run a model. Only the LLM leaves the device:
 
 ```env
@@ -325,7 +346,7 @@ OLLAMA_MODEL=gemma:2b
 OLLAMA_BASE_URL=http://<your-ollama-host>:11434
 ```
 
-**Option C — a hosted API.** Every student message goes to the provider. This is
+**Option C, a hosted API.** Every student message goes to the provider. This is
 the configuration the project is developed against:
 
 ```env
@@ -377,7 +398,7 @@ These are run by hand, never by the app.
 |---|---|
 | `scripts/fetch_embedding_model.py` | Populate the ONNX model cache before deployment. |
 | `scripts/dedup_user_memory.py` | Compact a `user_memory` table written before writes became real upserts. Dry-run by default; `--apply` to rewrite, backup taken first. |
-| `scripts/migrate_embeddings.py` | Re-embed local memory after an embedding-model change. Works offline — rows keep their `content`. Dry-run by default; `--apply` to rewrite, backup taken first. |
+| `scripts/migrate_embeddings.py` | Re-embed local memory after an embedding-model change. Works offline, rows keep their `content`. Dry-run by default; `--apply` to rewrite, backup taken first. |
 
 ---
 
@@ -404,13 +425,13 @@ taken on trust.
   migration were embedded at 3072 dimensions by a remote embedder.
   Regenerate with `batch_pipeline.py --upload`, and re-fetch any course already
   downloaded to a device. A device that skips this gets a readable refusal, not
-  bad answers — but it gets no course retrieval until it does.
+  bad answers but it gets no course retrieval until it does.
 * **"Check for Updates" is unreliable.** `sync_with_registry` raises
   `UnboundLocalError` on several paths, including the steady state where
   everything is already up to date. Fix pending.
 * **A bad `LLM_PROVIDER` fails at import, not at the first question.**
   `llm_provider.py` raises on an unrecognised value, and `agent.py` builds both
-  LLMs at module scope — so a typo in `.env` stops the app from starting rather
+  LLMs at module scope so a typo in `.env` stops the app from starting rather
   than producing a confusing turn. Loud, but earlier than ideal; making the
   construction lazy is pending.
 * **Inference is the only network dependency left.** Retrieval and memory work
