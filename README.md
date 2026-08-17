@@ -315,7 +315,8 @@ cache once, then ship it with the deployment.
 uv run python scripts/fetch_embedding_model.py
 ```
 
-This writes ~240 MB into `./models`. Copy that directory onto each target device.
+This writes 252 MB (240 MiB) into `./models`. Copy that directory onto each target
+device.
 If it is missing at startup the agent fails immediately with instructions rather
 than hanging.
 

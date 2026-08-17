@@ -92,8 +92,8 @@ uv run python cloud_registry/pipeline/manifest_generator.py
 
 ## ⚙️ Requirements
 
-*   **The ONNX embedding model** (~252 MB, step 1). Embeddings are computed on
-    this machine; **no embedding API key is needed**.
+*   **The ONNX embedding model** (252 MB / 240 MiB, step 1). Embeddings are
+    computed on this machine; **no embedding API key is needed**.
 *   **GCS permissions** to publish the manifest and Parquet files. Either
     Application Default Credentials:
 

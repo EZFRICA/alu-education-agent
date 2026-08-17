@@ -1,4 +1,4 @@
-# A session in four screenshots
+# A session in five screenshots
 
 The same tutoring session the root README quotes, seen from the APU Control
 Center. Left column: L1 cache and the L2 DLL. Right column: the student's view.
@@ -72,6 +72,41 @@ denominators, following the lesson as it narrows.
 The closing question offers *"one where the final answer needs to be simplified"* —
 simplification went unused on this exercise, and the tutor proposes to come back
 to it.
+
+---
+
+## 5 — Closing the app, and reopening it
+
+![After a restart, Akili greets the student by naming the exact topic stored in current_session](alu-education-agent-restart.png)
+
+> **Grace** — Hello, I will continue to learn
+>
+> **Akili** — Welcome back! I love that energy. 🏀
+>
+> Since we were working on **subtracting fractions by finding common
+> denominators**, how would you like to proceed?
+>
+> 1. **Level up:** tougher fraction subtraction problems (maybe with larger
+>    numbers, or even a basketball-themed word problem?)
+> 2. **New Topic:** something completely different.
+
+The process was restarted, so the transcript is empty — the exchange above is the
+whole conversation. Every specific in that greeting is read back from the three
+blocks on the left:
+
+- *"subtracting fractions by finding common denominators"* — `current_session`,
+  word for word
+- the 🏀 and the *basketball-themed word problem* — `student_profile`
+- *"Level up… larger numbers"* — `learning_preferences`
+
+The sidebar still shows the conversation window set to `4`. That caption is
+computed from the slider alone, not from what exists: with no transcript to draw
+from, the setting changes nothing here. Continuity on this screen is carried
+entirely by L1 and L2.
+
+Which is the point of the whole series. Screens 1–4 show the window doing work no
+memory block can do — knowing which exercise is open. This one shows the memory
+hierarchy doing work no window can do — surviving the process that produced it.
 
 ---
 
